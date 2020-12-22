@@ -1,0 +1,249 @@
+---
+title: Exporatory genetics of HpA
+date: 2020-11-20
+author: Kevin Murray
+---
+
+```{r setup, include=F, cache=F}
+cran.pkgs = c("tidyverse", "ggmap", "ggrepel", "RColorBrewer", "fossil", "vegan", "conStruct", "foreach", "doParallel", "parallel")
+bioc.pkgs = c("SNPRelate")
+#install.packages(cran.pkgs)
+#BiocManager::install(bioc.pkgs)
+for (pkg in c(cran.pkgs, bioc.pkgs)) require(pkg, character.only = T)
+NCPUS = as.integer(Sys.getenv("PBS_NCPUS", parallel::detectCores(logical=F)))
+.par.clust = makeCluster(NCPUS,type="FORK")
+registerDoParallel(.par.clust)
+cat(paste("Using", NCPUS, "cores\n"))
+```
+
+```{r setup2, include=F}
+knitr::opts_chunk$set(cache=TRUE, fig.width=7,fig.height=5, dev="svglite")
+```
+
+
+
+# Genotype data
+
+```{r}
+if (file_test("-nt", "data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.vcf.gz",
+              "data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")) {
+    cat("Updating GDS file from VCF\n")
+    snpgdsVCF2GDS("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.vcf.gz",
+                  "data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")
+} else {
+    cat("Not updating gds file\n")
+}
+```
+
+
+```{r}
+gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")
+gds.sum  = snpgdsSummary(gds)
+```
+
+
+## Broad data exploration: missingness, freqs
+
+### Sample missingness
+
+```{r}
+samp.miss = snpgdsSampMissRate(gds)
+hist(samp.miss, main="Sample missing prop")
+```
+
+Looks broadly good, about three crappy samples with < 80% completeness. Will go
+ahead with those in there though as they still look reasonable. If they stick
+out in the dendro then I'll remove for further work. Might be worth having a go
+with imputation.
+
+### SNP missingness
+
+```{r}
+snp.rate = snpgdsSNPRateFreq(gds)
+hist(snp.rate$MissingRate, main="SNP missing prop")
+```
+
+Again per-snp missingness is very good. Will set the snp missing threshold at
+30% as that removes the worst `r mean(snp.rate$MissingRate>0.30)*100`% of SNPs
+
+### SNP MAF
+
+```{r}
+hist(snp.rate$AlleleFreq, main="SNP AF")
+hist(snp.rate$MinorFreq, main="SNP MAF")
+```
+
+Interesting SFS. Fairly typical folded SFS, but it seems the reference allele
+is frequently the rarer allele.
+
+
+### Set thresholds
+
+```{r}
+sample.missing.thresh = 1
+snp.missing.thresh = 0.3
+```
+
+
+## Dendrogram/PCA
+
+```{r}
+snp.ibs = snpgdsIBS(gds, missing.rate = snp.missing.thresh, num.thread = 4)
+image(1-snp.ibs$ibs)
+```
+
+
+
+```{r}
+snp.ibs %>%
+    snpgdsHCluster() %>%
+    snpgdsCutTree() %>%
+    snpgdsDrawTree()
+```
+
+```{r}
+snp.pca = snpgdsPCA(gds, missing.rate = snp.missing.thresh)
+
+plot(snp.pca)
+```
+
+
+# Geographic exploration
+
+## Read metadata,
+
+```{r}
+geo = read_csv("data/finalInds.AllGeoInfo.csv")
+
+summary(geo[, c("latitude", "longitude")])
+```
+
+
+## Maps
+
+```{r}
+eu.bbox = c(left=-18, right=32, top=62, bottom=32)
+basemap.terr = get_stamenmap(eu.bbox, zoom=4, maptype="terrain-background")
+p =  ggmap(basemap.terr, darken=c(0.4, "white"), legend="topleft", extent="device")
+print(p)
+```
+
+```{r}
+eu.geo = geo %>%
+    filter(latitude > eu.bbox["bottom"], latitude < eu.bbox["top"], longitude > eu.bbox["left"], longitude < eu.bbox["right"])
+samp.within.eur = eu.geo %>%
+    pull(ind)
+```
+
+```{r}
+p + geom_point(aes(longitude, latitude, colour=pop), data=eu.geo,
+	       alpha=1, size=2) +
+    labs(x="Longitude", y="Latitude") +
+    scale_colour_discrete(name="Population") + 
+    theme_bw()
+```
+
+
+## Align to (EU) geno data
+
+Now match the rows/cols of the IBS matrix to get our distance
+
+```{r}
+m = match(samp.within.eur,  snp.ibs$sample.id)
+geno.dist = 1 - snp.ibs$ibs[m, m]
+dim(geno.dist)
+length(geo$ind)
+rownames(geno.dist) = colnames(geno.dist) = samp.within.eur
+hist(geno.dist)
+```
+
+## Simple IBD
+
+```{r}
+geo.dist = earth.dist(as.matrix(eu.geo[, c("longitude", "latitude")]))
+plot(geno.dist ~ as.matrix(geo.dist))
+mantel(geno.dist, as.matrix(geo.dist))
+```
+
+## Construct
+
+First, we need to select samples and find geographic clusters
+
+```{r}
+geo.dist.indiv = eu.geo %>%
+    column_to_rownames(var = "ind") %>%
+    select(longitude, latitude) %>%
+    fossil::earth.dist()
+geo.clust.indiv = geo.dist.indiv %>%
+    hclust() %>%
+    cutree(h=5) # cut at 5km radius
+geo.cluster.name = sprintf("GC%02d", geo.clust.indiv)
+eu.geo$geo.clust = geo.cluster.name
+table(geo.cluster.name)
+```
+
+So at a population radius of 5km, we have `r length(geo.cluster.name)`
+clusters. Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of
+population allele frequencies.
+
+```{r}
+gen = snpgdsGetGeno(gds, sample.id = samp.within.eur, with.id = T)
+```
+
+```{r}
+N.SNP= ncol(gen$genotype)
+gen.pop = foreach(i=seq_len(N.SNP), .combine=cbind) %do% {
+    tapply(gen$genotype[, i], geo.cluster.name, function(x) {mean(x, na.rm=T)/2})
+}
+```
+
+```{r}
+gen.var = foreach(i=seq_len(N.SNP), .combine=c) %do% {
+    var(gen.pop[, i], na.rm=T)
+}
+which.snp = which(gen.var > 0)
+```
+
+
+```{r}
+geo.clust.dat = eu.geo %>%
+    group_by(geo.clust, pop) %>%
+    summarise(latitude = mean(latitude),
+              longitude = mean(longitude)) %>%
+    ungroup()
+geo.clust.latlong = geo.clust.dat %>%
+    select(longitude, latitude) %>% 
+    as.matrix()
+geo.clust.dist = geo.clust.latlong %>%
+    fossil::earth.dist() %>%
+    as.matrix()
+```
+
+So to run construct we shell out to the cluster, as it takes ages. So, we save
+the inputs to an Rds and then load the results again here for plotting and
+interpretation.
+
+
+
+```{r run.xval, eval=F}
+source("run_cs.R", echo=T)
+cxv = kdm.x.validation(
+    prefix="out/Hpa_cs",
+    freqs=gen.pop[, which.snp],
+    coords=geo.clust.latlong,
+    geoDist=geo.clust.dist,
+    K=1:6,
+    train.prop=0.9,
+    n.reps=4,
+    n.iter=2000,
+    n.nodes=8,
+    save.files=T,
+    make.figs=T)
+
+```
+
+# Finalise
+
+```{r cleanup, include=F, cache=F}
+stopCluster(.par.clust)
+```
