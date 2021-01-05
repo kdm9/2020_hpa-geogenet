@@ -1,0 +1,12 @@
+name: hpa-geogen
+channels:
+  - default
+  - conda-forge
+  - bioconda
+dependencies:
+  - r
+  - r-tidyverse
+  - htslib
+  - r-biocmanager
+  - libcurl
+  - pynvim

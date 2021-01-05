@@ -1,5 +1,5 @@
 .PHONY: all
-all: 2020-12-14_ggexplore.html
+all: 01_hpa-explorartory.html
 
 .PHONY: clean
 clean:

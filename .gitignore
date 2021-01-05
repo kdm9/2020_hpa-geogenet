@@ -1,4 +1,5 @@
 out
+.Rhistory
 *_files/
 *_cache/
 *.html
