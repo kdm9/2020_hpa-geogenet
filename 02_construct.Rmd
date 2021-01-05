@@ -51,12 +51,14 @@ So at a population radius of 5km, we have `r length(geo.cluster.name)`
 clusters. Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of
 population allele frequencies.
 
-```{r}
+```{r gdsopen, cache=F}
+gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")
+gds.sum  = snpgdsSummary(gds)
 gen = snpgdsGetGeno(gds, sample.id = samp.within.eur, with.id = T)
 ```
 
 ```{r}
-N.SNP= ncol(gen$genotype)
+N.SNP= 10000
 gen.pop = foreach(i=seq_len(N.SNP), .combine=cbind) %do% {
     tapply(gen$genotype[, i], geo.cluster.name, function(x) {mean(x, na.rm=T)/2})
 }
@@ -67,6 +69,7 @@ gen.var = foreach(i=seq_len(N.SNP), .combine=c) %do% {
     var(gen.pop[, i], na.rm=T)
 }
 which.snp = which(gen.var > 0)
+table(gen.var > 0)
 ```
 
 
