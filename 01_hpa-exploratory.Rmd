@@ -29,7 +29,7 @@ knitr::opts_chunk$set(cache=TRUE, fig.width=7,fig.height=5, dev="svglite")
 
 # Genotype data
 
-```{r}
+```{r makegds}
 if (!file.exists("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")) {
     cat("Updating GDS file from VCF\n")
     snpgdsVCF2GDS("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.vcf.gz",

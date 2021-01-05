@@ -1,5 +1,5 @@
 .PHONY: all
-all: 01_hpa-explorartory.html
+all: 01_hpa-exploratory.html 02_construct.html
 
 .PHONY: clean
 clean:
