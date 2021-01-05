@@ -20,7 +20,7 @@ for (pkg in c(cran.pkgs, bioc.pkgs)) {
         require(pkg, character.only = T)
     }
 }
-load(file="hpa.Rda")
+if (file.exists("data/01_hpa-geogenetics.Rda")) load(file="data/01_hpa-geogenetics.Rda")
 ```
 
 ```{r setup2, include=F}
@@ -30,8 +30,7 @@ knitr::opts_chunk$set(cache=TRUE, fig.width=7,fig.height=5, dev="svglite")
 # Genotype data
 
 ```{r}
-if (file_test("-nt", "data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.vcf.gz",
-              "data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")) {
+if (!file.exists("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")) {
     cat("Updating GDS file from VCF\n")
     snpgdsVCF2GDS("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.vcf.gz",
                   "data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")
@@ -164,13 +163,13 @@ hist(geno.dist)
 ## Simple IBD
 
 ```{r ibd}
-ibd.geo.dist = as.matrix(eu.geo[, c("longitude", "latitude")]) %>%
+geo.dist = as.matrix(eu.geo[, c("longitude", "latitude")]) %>%
     earth.dist() %>%
     as.dist()
 ibd.geno.dist = geno.dist %>%
     as.dist()
-vegan::mantel(ibd.geno.dist, ibd.geo.dist)
-mg = ecodist::mgram(ibd.geno.dist, ibd.geo.dist)
+vegan::mantel(ibd.geno.dist, geo.dist)
+mg = ecodist::mgram(ibd.geno.dist, geo.dist)
 mg$mgram[,4]
 plot(mg, xlab="Distance (km)")
 ```
@@ -199,5 +198,5 @@ plot(mdl, include.rug=T, rug.sitepair=sp)
 # Finalise
 
 ```{r cleanup, include=F, cache=F}
-save.image(file="hpa.Rda", compress="xz")
+save.image(file="data/01_hpa-geogenetics.Rda", compress="xz")
 ```
