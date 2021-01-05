@@ -1,0 +1,109 @@
+---
+title: Construct on Hpa
+date: 2021-01-02
+author: Kevin Murray
+---
+
+Have now separated out the construt notebook.
+
+```{r setup, include=F, cache=F}
+cran.pkgs = c("tidyverse", "ggmap", "ggrepel", "RColorBrewer", "fossil", "vegan", "conStruct", "foreach", "doParallel", "parallel", "gdm", "ecodist")
+bioc.pkgs = c("SNPRelate")
+
+for (pkg in cran.pkgs) {
+    if (!require(pkg, character.only = T)) {
+        install.packages(pkg)
+        require(pkg, character.only = T)
+    }
+}
+for (pkg in c(cran.pkgs, bioc.pkgs)) {
+    if (!require(pkg, character.only = T)) {
+        BiocManager::install(pkg)
+        require(pkg, character.only = T)
+    }
+}
+load(file="hpa.Rda")
+NCPUS = as.integer(Sys.getenv("PBS_NCPUS", parallel::detectCores(logical=F)))
+.par.clust = makeCluster(NCPUS,type="FORK")
+registerDoParallel(.par.clust)
+cat(paste("Using", NCPUS, "cores\n"))
+```
+
+
+## Construct
+
+First, we need to select samples and find geographic clusters
+
+```{r}
+geo.dist.indiv = eu.geo %>%
+    column_to_rownames(var = "ind") %>%
+    select(longitude, latitude) %>%
+    fossil::earth.dist()
+geo.clust.indiv = geo.dist.indiv %>%
+    hclust() %>%
+    cutree(h=5) # cut at 5km radius
+geo.cluster.name = sprintf("GC%02d", geo.clust.indiv)
+eu.geo$geo.clust = geo.cluster.name
+table(geo.cluster.name)
+```
+
+So at a population radius of 5km, we have `r length(geo.cluster.name)`
+clusters. Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of
+population allele frequencies.
+
+```{r}
+gen = snpgdsGetGeno(gds, sample.id = samp.within.eur, with.id = T)
+```
+
+```{r}
+N.SNP= ncol(gen$genotype)
+gen.pop = foreach(i=seq_len(N.SNP), .combine=cbind) %do% {
+    tapply(gen$genotype[, i], geo.cluster.name, function(x) {mean(x, na.rm=T)/2})
+}
+```
+
+```{r}
+gen.var = foreach(i=seq_len(N.SNP), .combine=c) %do% {
+    var(gen.pop[, i], na.rm=T)
+}
+which.snp = which(gen.var > 0)
+```
+
+
+```{r}
+geo.clust.dat = eu.geo %>%
+    group_by(geo.clust, pop) %>%
+    summarise(latitude = mean(latitude),
+              longitude = mean(longitude)) %>%
+    ungroup()
+geo.clust.latlong = geo.clust.dat %>%
+    select(longitude, latitude) %>% 
+    as.matrix()
+geo.clust.dist = geo.clust.latlong %>%
+    fossil::earth.dist() %>%
+    as.matrix()
+```
+
+So to run construct we shell out to the cluster, as it takes ages. So, we save
+the inputs to an Rds and then load the results again here for plotting and
+interpretation.
+
+
+
+```{r run.xval, eval=F}
+source("run_cs.R", echo=T)
+cxv = kdm.x.validation(
+    prefix="out/Hpa_cs",
+    freqs=gen.pop[, which.snp],
+    coords=geo.clust.latlong,
+    geoDist=geo.clust.dist,
+    K=1:6,
+    train.prop=0.9,
+    n.reps=4,
+    n.iter=2000,
+    n.nodes=8,
+    save.files=T,
+    make.figs=T)
+
+```
+
