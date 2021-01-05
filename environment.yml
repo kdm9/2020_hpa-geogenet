@@ -10,3 +10,4 @@ dependencies:
   - r-biocmanager
   - libcurl
   - pynvim
+  - r-svglite

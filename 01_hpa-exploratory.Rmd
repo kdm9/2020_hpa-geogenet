@@ -40,7 +40,7 @@ if (!file.exists("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.
 ```
 
 
-```{r}
+```{r gdsopen, cache=F}
 gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")
 gds.sum  = snpgdsSummary(gds)
 ```
