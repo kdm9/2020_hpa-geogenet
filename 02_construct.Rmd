@@ -7,7 +7,7 @@ author: Kevin Murray
 Have now separated out the construt notebook.
 
 ```{r setup, include=F, cache=F}
-cran.pkgs = c("tidyverse", "ggmap", "ggrepel", "RColorBrewer", "fossil", "vegan", "conStruct", "foreach", "doParallel", "parallel", "gdm", "ecodist")
+cran.pkgs = c("tidyverse", "conStruct", "foreach", "doParallel", "parallel")
 bioc.pkgs = c("SNPRelate")
 
 for (pkg in cran.pkgs) {
@@ -22,7 +22,7 @@ for (pkg in c(cran.pkgs, bioc.pkgs)) {
         require(pkg, character.only = T)
     }
 }
-load(file="hpa.Rda")
+load(file="data/01_hpa-geogenetics.Rda")
 NCPUS = as.integer(Sys.getenv("PBS_NCPUS", parallel::detectCores(logical=F)))
 .par.clust = makeCluster(NCPUS,type="FORK")
 registerDoParallel(.par.clust)
