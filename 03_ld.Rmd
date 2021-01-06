@@ -1,0 +1,55 @@
+---
+title: Halfmaximal LD over Hpa
+date: 2021-01-06
+author: Kevin Murray
+---
+
+```{r setup, include=F, cache=F}
+require("boringLD")     || remotes::install_github("kdm9/boringLD")     && require("boringLD")
+require("tidyverse")    || install.packages("tidyverse")                && require("tidyverse")
+require("foreach")      || install.packages("foreach")                  && require("foreach")
+require("doParallel")   || install.packages("doParallel")               && require("doParallel")
+require("parallel")     || install.packages("parallel")                 && require("parallel")
+require("ggplot2")      || install.packages("ggplot2")                  && require("ggplot2")
+if (file.exists("data/01_hpa-geogenetics.Rda")) load(file="data/01_hpa-geogenetics.Rda")
+if (file.exists("data/03_hpa-ld.Rda")) load(file="data/03_hpa-ld.Rda")
+NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
+registerDoParallel(cores=NCPUS)
+cat(paste("Using", NCPUS, "cores\n"))
+```
+
+
+```{r}
+halfmax = windowed_halfmax(bcf="data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.bcf",
+                 windowsize=100000,
+                 minMAF=0.1,
+                 maxMissing=0.4)
+```
+
+```{r}
+halfmax.plot = halfmax %>%
+    arrange(contig, start) %>%
+    mutate(culmpos = cumsum(start))
+```
+
+```{r}
+ggplot(halfmax.plot, aes(culmpos, halfmax)) +
+    geom_line()
+```
+
+
+
+```{r}
+halfmax.fullchrom = windowed_halfmax(
+    bcf="data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.bcf",
+    windowsize=1e9,
+    minMAF=0.1,
+    maxMissing=0.4
+)
+```
+
+# Finalise
+
+```{r cleanup, include=F, cache=F}
+save.image(file="data/03_hpa-ld.Rda", compress="xz")
+```
