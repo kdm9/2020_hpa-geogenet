@@ -4,10 +4,11 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - r
-  - r-tidyverse
+  - git-annex
   - htslib
-  - r-biocmanager
   - libcurl
   - pynvim
+  - r
+  - r-biocmanager
   - r-svglite
+  - r-tidyverse
