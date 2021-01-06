@@ -12,3 +12,4 @@ dependencies:
   - r-biocmanager
   - r-svglite
   - r-tidyverse
+  - r-remotes

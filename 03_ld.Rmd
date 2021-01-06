@@ -5,7 +5,7 @@ author: Kevin Murray
 ---
 
 ```{r setup, include=F, cache=F}
-require("boringLD")     || remotes::install_github("kdm9/boringLD")     && require("boringLD")
+require("boringLD")     || remotes::install_github("kdm9/boringLD")     ;  require("boringLD")
 require("tidyverse")    || install.packages("tidyverse")                && require("tidyverse")
 require("foreach")      || install.packages("foreach")                  && require("foreach")
 require("doParallel")   || install.packages("doParallel")               && require("doParallel")
