@@ -23,14 +23,12 @@ for (pkg in c(cran.pkgs, bioc.pkgs)) {
     }
 }
 load(file="data/01_hpa-geogenetics.Rda")
-NCPUS = as.integer(Sys.getenv("PBS_NCPUS", parallel::detectCores(logical=F)))
-.par.clust = makeCluster(NCPUS,type="FORK")
-registerDoParallel(.par.clust)
+NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))/4
+registerDoParallel(cores=NCPUS)
 cat(paste("Using", NCPUS, "cores\n"))
 ```
 
-
-## Construct
+## Geographic clustering
 
 First, we need to select samples and find geographic clusters
 
@@ -44,12 +42,25 @@ geo.clust.indiv = geo.dist.indiv %>%
     cutree(h=5) # cut at 5km radius
 geo.cluster.name = sprintf("GC%02d", geo.clust.indiv)
 eu.geo$geo.clust = geo.cluster.name
-table(geo.cluster.name)
 ```
 
 So at a population radius of 5km, we have `r length(geo.cluster.name)`
-clusters. Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of
-population allele frequencies.
+clusters.
+
+Here are the cluster sizes (y clusters of size x): 
+
+```{r}
+table(table(geo.cluster.name))
+```
+
+
+## Basic genetics
+
+Here we need to extract the SNP data, and reduce it to allele frequencies at
+each geographic cluster, and remove snps with null variance.
+
+
+First,  get the indivs by snps matrix (122x500k)
 
 ```{r gdsopen, cache=F}
 gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")
@@ -57,12 +68,16 @@ gds.sum  = snpgdsSummary(gds)
 gen = snpgdsGetGeno(gds, sample.id = samp.within.eur, with.id = T)
 ```
 
+Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of population allele frequencies.
+
 ```{r}
-N.SNP= 10000
+N.SNP = ncol(gen$genotype)
 gen.pop = foreach(i=seq_len(N.SNP), .combine=cbind) %do% {
     tapply(gen$genotype[, i], geo.cluster.name, function(x) {mean(x, na.rm=T)/2})
 }
 ```
+
+Finally remove null variance snps
 
 ```{r}
 gen.var = foreach(i=seq_len(N.SNP), .combine=c) %do% {
@@ -72,6 +87,11 @@ which.snp = which(gen.var > 0)
 table(gen.var > 0)
 ```
 
+## Run construct
+
+Here we do some data prep, then run all the construct runs needed to do cross
+validation (NB: we don't use construct's own cross validation here as it runs
+all K sequentially which makes it take K times as long as it needs to.
 
 ```{r}
 geo.clust.dat = eu.geo %>%
@@ -91,10 +111,34 @@ So to run construct we shell out to the cluster, as it takes ages. So, we save
 the inputs to an Rds and then load the results again here for plotting and
 interpretation.
 
+```{r}
+kdm.x.validation <- function(train.prop = 0.9, n.reps, K, freqs = NULL, data.partitions = NULL, geoDist, coords, prefix, n.iter, make.figs = FALSE, save.files = FALSE, n.nodes=16, parallel=T, ...) {
+    call.check <- conStruct:::check.xval.call(args <- as.list(environment()))
+    data.partitions <- conStruct:::make.data.partitions(n.reps,freqs,train.prop)
+    conStruct:::check.data.partitions.arg(args <- as.list(environment()))
+    cat("Data partitions created successfully\n")
+    n.mdl = 2 * n.reps * length(K)
+    x.val = foreach::foreach(rep.no=1:n.reps) %:%
+        foreach::foreach(k=K) %:%
+        foreach::foreach(mdl=c("sp", "nsp")) %dopar% {
+        spatial = mdl == "sp"
+        cs = conStruct:::xval.conStruct(spatial = TRUE, K = k, 
+                        data = data.partitions[[rep.no]]$training, 
+                        geoDist = geoDist, coords = coords, 
+                        prefix = paste0(prefix, "_", mdl, "_", "rep", rep.no, "K", k), 
+                        n.iter = n.iter, make.figs = make.figs, save.files = save.files)
+        cat(paste0("mdl=", mdl, " K=",k, " rep=", rep.no, " Done\n"))
+        list(mdl=mdl, K=k, rep=rep.no, construct=cs)
+    }
+    save(data.partitions,file=paste0(prefix, ".xval.data.partitions.Robj"))
+    save(x.val,file=paste0(prefix, ".xval.results.Robj"))
+    x.val
+}
+```
 
 
-```{r run.xval, eval=F}
-source("run_cs.R", echo=T)
+```{r run.xval, cache=T}
+if (!dir.exists("out")) dir.create("out")
 cxv = kdm.x.validation(
     prefix="out/Hpa_cs",
     freqs=gen.pop[, which.snp],
@@ -102,11 +146,16 @@ cxv = kdm.x.validation(
     geoDist=geo.clust.dist,
     K=1:6,
     train.prop=0.9,
-    n.reps=4,
-    n.iter=2000,
-    n.nodes=8,
+    n.reps=8,
+    n.iter=20000,
+    n.nodes=NULL,
     save.files=T,
     make.figs=T)
-
 ```
 
+
+# Finalise
+
+```{r cleanup, include=F, cache=F}
+save.image(file="data/02_construct.Rda", compress="xz")
+```
