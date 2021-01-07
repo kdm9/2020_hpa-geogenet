@@ -13,3 +13,4 @@ dependencies:
   - r-svglite
   - r-tidyverse
   - r-remotes
+  - r-xfun
