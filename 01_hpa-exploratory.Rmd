@@ -4,27 +4,21 @@ date: 2020-11-20
 author: Kevin Murray
 ---
 
-```{r setup, include=F, cache=F}
-cran.pkgs = c("tidyverse", "ggmap", "ggrepel", "RColorBrewer", "fossil", "vegan", "conStruct", "foreach", "doParallel", "parallel", "gdm", "ecodist")
-bioc.pkgs = c("SNPRelate")
-
-for (pkg in cran.pkgs) {
-    if (!require(pkg, character.only = T)) {
-        install.packages(pkg)
-        require(pkg, character.only = T)
-    }
-}
-for (pkg in c(cran.pkgs, bioc.pkgs)) {
-    if (!require(pkg, character.only = T)) {
-        BiocManager::install(pkg)
-        require(pkg, character.only = T)
-    }
-}
+```{r setup}
+if (!require("tidyverse"))    { install.packages("tidyverse")     ; require("tidyverse")    }
+if (!require("foreach"))      { install.packages("foreach")       ; require("foreach")      }
+if (!require("doParallel"))   { install.packages("doParallel")    ; require("doParallel")   }
+if (!require("parallel"))     { install.packages("parallel")      ; require("parallel")     }
+if (!require("ggplot2"))      { install.packages("ggplot2")       ; require("ggplot2")      }
+if (!require("ggrepel"))      { install.packages("ggrepel")       ; require("ggrepel")      }
+if (!require("ggmap"))        { install.packages("ggmap")         ; require("ggmap")        }
+if (!require("RColorBrewer")) { install.packages("RColorBrewer")  ; require("RColorBrewer") }
+if (!require("fossil"))       { install.packages("fossil")        ; require("fossil")       }
+if (!require("vegan"))        { install.packages("vegan")         ; require("vegan")        }
+if (!require("gdm"))          { install.packages("gdm")           ; require("gdm")          }
+if (!require("ecodist"))      { install.packages("ecodist")       ; require("ecodist")      }
+if (!require("SNPRelate"))    { BiocManager::install("SNPRelate") ; require("SNPRelate")    }
 if (file.exists("data/01_hpa-geogenetics.Rda")) load(file="data/01_hpa-geogenetics.Rda")
-```
-
-```{r setup2, include=F}
-knitr::opts_chunk$set(cache=TRUE, fig.width=7,fig.height=5, dev="svglite")
 ```
 
 # Genotype data
@@ -41,7 +35,7 @@ if (!file.exists("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.
 
 
 ```{r gdsopen, cache=F}
-gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")
+gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds", allow.duplicate=T)
 gds.sum  = snpgdsSummary(gds)
 ```
 
@@ -50,7 +44,7 @@ gds.sum  = snpgdsSummary(gds)
 
 ### Sample missingness
 
-```{r}
+```{r sample.missing}
 samp.miss = snpgdsSampMissRate(gds)
 hist(samp.miss, main="Sample missing prop")
 ```
@@ -62,7 +56,7 @@ with imputation.
 
 ### SNP missingness
 
-```{r}
+```{r snp.rate}
 snp.rate = snpgdsSNPRateFreq(gds)
 hist(snp.rate$MissingRate, main="SNP missing prop")
 ```
@@ -72,7 +66,7 @@ Again per-snp missingness is very good. Will set the snp missing threshold at
 
 ### SNP MAF
 
-```{r}
+```{r snp.rate.hist}
 hist(snp.rate$AlleleFreq, main="SNP AF")
 hist(snp.rate$MinorFreq, main="SNP MAF")
 ```
@@ -83,7 +77,7 @@ is frequently the rarer allele.
 
 ### Set thresholds
 
-```{r}
+```{r set.thresh}
 sample.missing.thresh = 1
 snp.missing.thresh = 0.3
 ```
@@ -91,23 +85,20 @@ snp.missing.thresh = 0.3
 
 ## Dendrogram/PCA
 
-```{r}
+```{r snp.ibs}
 snp.ibs = snpgdsIBS(gds, missing.rate = snp.missing.thresh, num.thread = 4)
 image(1-snp.ibs$ibs)
 ```
 
-
-
-```{r}
+```{r dendro}
 snp.ibs %>%
     snpgdsHCluster() %>%
     snpgdsCutTree() %>%
     snpgdsDrawTree()
 ```
 
-```{r}
+```{r pca}
 snp.pca = snpgdsPCA(gds, missing.rate = snp.missing.thresh)
-
 plot(snp.pca)
 ```
 
@@ -120,7 +111,6 @@ plot(snp.pca)
 geo = read_csv("data/finalInds.AllGeoInfo.csv")
 summary(geo[, c("latitude", "longitude")])
 ```
-
 
 ## Maps
 
@@ -140,7 +130,7 @@ samp.within.eur = eu.geo %>%
 
 ```{r mapplot}
 p + geom_point(aes(longitude, latitude, colour=pop), data=eu.geo,
-	       alpha=1, size=2) +
+           alpha=1, size=2) +
     labs(x="Longitude", y="Latitude") +
     scale_colour_discrete(name="Population") + 
     theme_bw()
@@ -186,7 +176,7 @@ dim(gdm.preds)
 dim(gdm.geodist)
 ```
 
-```{r}
+```{r formatsitepair}
 sp = formatsitepair(gdm.geno, 3, predData=gdm.preds, siteColumn="ind",
                     XColumn="longitude", YColumn="latitude",
                     distPreds=list("geography.gcd"=gdm.geodist)) %>%
@@ -197,6 +187,6 @@ plot(mdl, include.rug=T, rug.sitepair=sp)
 
 # Finalise
 
-```{r cleanup, include=F, cache=F}
+```{r cleanup}
 save.image(file="data/01_hpa-geogenetics.Rda", compress="xz")
 ```

@@ -1,7 +1,8 @@
-out
 .RData
 .Rhistory
 Rplots.pdf
 *_files/
 *_cache/
 *.html
+out
+!out/cache
