@@ -119,14 +119,14 @@ kdm.x.validation <- function(train.prop = 0.9, n.reps, K, freqs = NULL, data.par
     x.val = foreach::foreach(rep.no=1:n.reps) %:%
         foreach::foreach(k=K) %:%
         foreach::foreach(mdl=c("sp", "nsp")) %dopar% {
-        spatial = mdl == "sp"
-        cs = conStruct:::xval.conStruct(spatial = TRUE, K = k, 
-                        data = data.partitions[[rep.no]]$training, 
-                        geoDist = geoDist, coords = coords, 
-                        prefix = paste0(prefix, "_", mdl, "_", "rep", rep.no, "K", k), 
-                        n.iter = n.iter, make.figs = make.figs, save.files = save.files)
-        cat(paste0("mdl=", mdl, " K=",k, " rep=", rep.no, " Done\n"))
-        list(mdl=mdl, K=k, rep=rep.no, construct=cs)
+            spatial = mdl == "sp"
+            cs = conStruct:::xval.conStruct(spatial = spatial, K = k, 
+                            data = data.partitions[[rep.no]]$training, 
+                            geoDist = geoDist, coords = coords, 
+                            prefix = paste0(prefix, "_", mdl, "_", "rep", rep.no, "K", k), 
+                            n.iter = n.iter, make.figs = make.figs, save.files = save.files)
+            cat(paste0("mdl=", mdl, " K=",k, " rep=", rep.no, " Done\n"))
+            list(mdl=mdl, K=k, rep=rep.no, construct=cs)
     }
     save(data.partitions,file=paste0(prefix, ".xval.data.partitions.Robj"))
     save(x.val,file=paste0(prefix, ".xval.results.Robj"))
@@ -152,7 +152,6 @@ cxv = xfun::cache_rds({
         make.figs=T)
 }, file="02_02_cs_xval", dir="data/cache/",  compress="xz")
 ```
-
 
 # Finalise
 
