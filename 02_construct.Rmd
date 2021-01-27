@@ -110,43 +110,46 @@ the inputs to an Rds and then load the results again here for plotting and
 interpretation.
 
 ```{r}
-kdm.x.validation <- function(train.prop = 0.9, n.reps, K, freqs = NULL, data.partitions = NULL, geoDist, coords, prefix, n.iter, make.figs = FALSE, save.files = FALSE, n.nodes=16, parallel=T, ...) {
-    call.check <- conStruct:::check.xval.call(args <- as.list(environment()))
-    data.partitions <- conStruct:::make.data.partitions(n.reps,freqs,train.prop)
-    conStruct:::check.data.partitions.arg(args <- as.list(environment()))
-    cat("Data partitions created successfully\n")
-    n.mdl = 2 * n.reps * length(K)
-    x.val = foreach::foreach(rep.no=1:n.reps, .combine=bind_rows) %:%
-        foreach::foreach(k=K, .combine=bind_rows) %:%
-        foreach::foreach(mdl=c("sp", "nsp"), .combine=bind_rows) %dopar% {
-            spatial = mdl == "sp"
-            cs = conStruct:::xval.conStruct(spatial = spatial, K = k, 
-                            data = data.partitions[[rep.no]]$training, 
-                            geoDist = geoDist, coords = coords, 
-                            prefix = paste0(prefix, "_", mdl, "_", "rep", rep.no, "K", k), 
-                            n.iter = n.iter, make.figs = make.figs, save.files = save.files)
-            cat(paste0("mdl=", mdl, " K=",k, " rep=", rep.no, " Done\n"))
-            list(mdl=mdl, K=k, rep=rep.no, construct.res=cs, data.part=data.partitions[[rep.no]])
-    }
-    save(data.partitions,file=paste0(prefix, ".xval.data.partitions.Robj"))
-    save(x.val,file=paste0(prefix, ".xval.results.Robj"))
-    x.val
-}
 ```
 
 ```{r}
 cxv.tmp = xfun::cache_rds({
+    kdm.x.validation <- function(train.prop = 0.9, n.reps, K, freqs = NULL, data.partitions = NULL, geoDist, coords, prefix, n.iter, make.figs = FALSE, save.files = FALSE, n.nodes=16, parallel=T, ...) {
+        call.check <- conStruct:::check.xval.call(args <- as.list(environment()))
+        data.partitions <- conStruct:::make.data.partitions(n.reps,freqs,train.prop)
+        conStruct:::check.data.partitions.arg(args <- as.list(environment()))
+        cat("Data partitions created successfully\n")
+        n.mdl = 2 * n.reps * length(K)
+        x.val = foreach::foreach(rep.no=1:n.reps, .combine=bind_rows) %:%
+                foreach::foreach(k=K, .combine=bind_rows) %:%
+                foreach::foreach(mdl=c("sp", "nsp"), .combine=bind_rows) %dopar% {
+                spatial = mdl == "sp"
+                cs = conStruct:::xval.conStruct(spatial = spatial, K = k, 
+                                data = data.partitions[[rep.no]]$training, 
+                                geoDist = geoDist, coords = coords, 
+                                prefix = paste0(prefix, "_", mdl, "_", "rep", rep.no, "K", k), 
+                                n.iter = n.iter, make.figs = make.figs, save.files = save.files)
+                fit = conStruct:::fit.to.test(data.partitions[[rep.no]]$testing, cs[[1]]) %>%
+                    unlist()
+                cat(paste0("mdl=", mdl, " K=",k, " rep=", rep.no, " Done\n"))
+                tibble(mdl=mdl, K=k, rep=rep.no, construct.res=cs, mdl.fit=list("fit"=fit))
+        }
+        #save(data.partitions,file=paste0(prefix, ".xval.data.partitions.Robj"))
+        #save(x.val,file=paste0(prefix, ".xval.results.Robj"))
+        list(res=x.val, data.parts=data.partitions)
+    }
+
     kdm.x.validation(
         prefix="out/Hpa_cs/HpA_run_tmp",
         freqs=gen.pop,
         coords=geo.clust.latlong,
         geoDist=geo.clust.dist,
-        K=1:2,
+        K=1:4,
         train.prop=0.9,
-        n.reps=2,
-        n.iter=1000,
-        n.nodes=NULL,
-        save.files=T,
+        n.reps=4,
+        n.iter=2000,
+        n.nodes=NCPUS,
+        save.files=F,
         make.figs=T)
 }, file="02_02_cs_xval_tmp", dir="data/cache/",  compress="xz")
 ```
@@ -175,16 +178,32 @@ cxv = xfun::cache_rds({
 first, reshape the nested lists to a tibble
 
 ```{r}
-str(cxv, max.level=4)
-cxv2 = unlist(cxv, recursive=F) %>%
-    unlist(recursive=F) %>%
-    do.call(bind_rows, .)
-cxv2
+
+ls()
+load("out/Hpa_cs.xval.data.partitions.Robj")
+load("out/Hpa_cs.xval.results.Robj")
+xv = x.val %>%
+    unlist(recusive=F) %>%
+    unlist(recusive=F) %>%
+    do.call(
+
+n.reps=4
+K=1:6
+res.tib = foreach::foreach(rep.no=1:n.reps, .combine=bind_rows) %:%
+          foreach::foreach(k=K, .combine=bind_rows) %:%
+          foreach::foreach(mdl=c("sp", "nsp"), .combine=bind_rows) %do% {
+    spi = 1
+    if (mdl=="nsp") spi = 2
+    cat(paste("rep", rep.no, "K", k, mdl, "\n"))
+    as.tibble(x.val[[rep.no]][[k]][[spi]])
+}
+res.tib
 ```
 
 ```{r}
-conStruct:::fit.to.test(
-
+cxv.tmp
+%>%
+    mutate(mdl.fit=conStruct:::fit.to.test(data.part$testing, construct.res))
 ```
 
 
