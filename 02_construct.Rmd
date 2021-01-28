@@ -109,11 +109,9 @@ So to run construct we shell out to the cluster, as it takes ages. So, we save
 the inputs to an Rds and then load the results again here for plotting and
 interpretation.
 
-```{r}
-```
 
 ```{r}
-cxv.tmp = xfun::cache_rds({
+cxv = xfun::cache_rds({
     kdm.x.validation <- function(train.prop = 0.9, n.reps, K, freqs = NULL, data.partitions = NULL, geoDist, coords, prefix, n.iter, make.figs = FALSE, save.files = FALSE, n.nodes=16, parallel=T, ...) {
         call.check <- conStruct:::check.xval.call(args <- as.list(environment()))
         data.partitions <- conStruct:::make.data.partitions(n.reps,freqs,train.prop)
@@ -123,19 +121,17 @@ cxv.tmp = xfun::cache_rds({
         x.val = foreach::foreach(rep.no=1:n.reps, .combine=bind_rows) %:%
                 foreach::foreach(k=K, .combine=bind_rows) %:%
                 foreach::foreach(mdl=c("sp", "nsp"), .combine=bind_rows) %dopar% {
-                spatial = mdl == "sp"
-                cs = conStruct:::xval.conStruct(spatial = spatial, K = k, 
-                                data = data.partitions[[rep.no]]$training, 
-                                geoDist = geoDist, coords = coords, 
-                                prefix = paste0(prefix, "_", mdl, "_", "rep", rep.no, "K", k), 
-                                n.iter = n.iter, make.figs = make.figs, save.files = save.files)
-                fit = conStruct:::fit.to.test(data.partitions[[rep.no]]$testing, cs[[1]]) %>%
-                    unlist()
-                cat(paste0("mdl=", mdl, " K=",k, " rep=", rep.no, " Done\n"))
-                tibble(mdl=mdl, K=k, rep=rep.no, construct.res=cs, mdl.fit=list("fit"=fit))
+            spatial = mdl == "sp"
+            cs = conStruct:::xval.conStruct(spatial = spatial, K = k, 
+                            data = data.partitions[[rep.no]]$training, 
+                            geoDist = geoDist, coords = coords, 
+                            prefix = paste0(prefix, "_", mdl, "_", "rep", rep.no, "K", k), 
+                            n.iter = n.iter, make.figs = make.figs, save.files = save.files)
+            fit = conStruct:::fit.to.test(data.partitions[[rep.no]]$testing, cs[[1]]) %>%
+                unlist()
+            cat(paste0("mdl=", mdl, " K=",k, " rep=", rep.no, " Done\n"))
+            tibble(mdl=mdl, K=k, rep=rep.no, construct.res=cs, mdl.fit=list("fit"=fit))
         }
-        #save(data.partitions,file=paste0(prefix, ".xval.data.partitions.Robj"))
-        #save(x.val,file=paste0(prefix, ".xval.results.Robj"))
         list(res=x.val, data.parts=data.partitions)
     }
 
@@ -147,63 +143,18 @@ cxv.tmp = xfun::cache_rds({
         K=1:4,
         train.prop=0.9,
         n.reps=4,
-        n.iter=2000,
+        n.iter=10000,
         n.nodes=NCPUS,
         save.files=F,
-        make.figs=T)
-}, file="02_02_cs_xval_tmp", dir="data/cache/",  compress="xz")
-```
-
-
-```{r run.xval}
-if (!dir.exists("out/Hpa_cs/")) dir.create("out/Hpa_cs")
-cxv = xfun::cache_rds({
-    kdm.x.validation(
-        prefix="out/Hpa_cs/HpA_run2",
-        freqs=gen.pop,
-        coords=geo.clust.latlong,
-        geoDist=geo.clust.dist,
-        K=1:6,
-        train.prop=0.9,
-        n.reps=8,
-        n.iter=20000,
-        n.nodes=NULL,
-        save.files=T,
         make.figs=T)
 }, file="02_02_cs_xval", dir="data/cache/",  compress="xz")
 ```
 
 # Summarise construct cross validation
 
-first, reshape the nested lists to a tibble
+First, normalise the log likelihoods
 
 ```{r}
-
-ls()
-load("out/Hpa_cs.xval.data.partitions.Robj")
-load("out/Hpa_cs.xval.results.Robj")
-xv = x.val %>%
-    unlist(recusive=F) %>%
-    unlist(recusive=F) %>%
-    do.call(
-
-n.reps=4
-K=1:6
-res.tib = foreach::foreach(rep.no=1:n.reps, .combine=bind_rows) %:%
-          foreach::foreach(k=K, .combine=bind_rows) %:%
-          foreach::foreach(mdl=c("sp", "nsp"), .combine=bind_rows) %do% {
-    spi = 1
-    if (mdl=="nsp") spi = 2
-    cat(paste("rep", rep.no, "K", k, mdl, "\n"))
-    as.tibble(x.val[[rep.no]][[k]][[spi]])
-}
-res.tib
-```
-
-```{r}
-cxv.tmp
-%>%
-    mutate(mdl.fit=conStruct:::fit.to.test(data.part$testing, construct.res))
 ```
 
 
