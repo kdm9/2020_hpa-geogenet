@@ -111,7 +111,7 @@ interpretation.
 
 
 ```{r}
-cxv = xfun::cache_rds({
+cxv.big = xfun::cache_rds({
     kdm.x.validation <- function(train.prop = 0.9, n.reps, K, freqs = NULL, data.partitions = NULL, geoDist, coords, prefix, n.iter, make.figs = FALSE, save.files = FALSE, n.nodes=16, parallel=T, ...) {
         call.check <- conStruct:::check.xval.call(args <- as.list(environment()))
         data.partitions <- conStruct:::make.data.partitions(n.reps,freqs,train.prop)
@@ -140,10 +140,10 @@ cxv = xfun::cache_rds({
         freqs=gen.pop,
         coords=geo.clust.latlong,
         geoDist=geo.clust.dist,
-        K=1:4,
+        K=1:8,
         train.prop=0.9,
-        n.reps=4,
-        n.iter=10000,
+        n.reps=16,
+        n.iter=20000,
         n.nodes=NCPUS,
         save.files=F,
         make.figs=T)
@@ -155,8 +155,16 @@ cxv = xfun::cache_rds({
 First, normalise the log likelihoods
 
 ```{r}
-```
+cxv2 = cxv$res %>%
+    mutate(ll.mean = purrr::map_dbl(mdl.fit, mean, na.rm=T)) %>%
+    select(-construct.res, -mdl.fit)
 
+ggplot(cxv2, aes(K, ll.mean)) +
+    geom_point(position="jitter") +
+    facet_wrap(~mdl)+
+    theme_bw()
+dev.off()
+```
 
 # Finalise
 
