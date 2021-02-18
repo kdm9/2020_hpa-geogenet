@@ -7,19 +7,24 @@ author: Kevin Murray
 Have now separated out the conStruct notebook.
 
 ```{r setup, include=F, cache=F}
-if (!require("tidyverse"))    { install.packages("tidyverse")     ; require("tidyverse")    }
-if (!require("foreach"))      { install.packages("foreach")       ; require("foreach")      }
-if (!require("doParallel"))   { install.packages("doParallel")    ; require("doParallel")   }
-if (!require("parallel"))     { install.packages("parallel")      ; require("parallel")     }
-if (!require("ggplot2"))      { install.packages("ggplot2")       ; require("ggplot2")      }
-if (!require("ggrepel"))      { install.packages("ggrepel")       ; require("ggrepel")      }
-if (!require("ggmap"))        { install.packages("ggmap")         ; require("ggmap")        }
-if (!require("RColorBrewer")) { install.packages("RColorBrewer")  ; require("RColorBrewer") }
-if (!require("fossil"))       { install.packages("fossil")        ; require("fossil")       }
-if (!require("vegan"))        { install.packages("vegan")         ; require("vegan")        }
-if (!require("conStruct"))    { install.packages("conStruct")     ; require("conStruct")    }
-if (!require("SNPRelate"))    { BiocManager::install("SNPRelate") ; require("SNPRelate")    }
+if (!require("tidyverse"))         { install.packages("tidyverse")                      ; require("tidyverse")          }
+if (!require("foreach"))           { install.packages("foreach")                        ; require("foreach")            }
+if (!require("doParallel"))        { install.packages("doParallel")                     ; require("doParallel")         }
+if (!require("parallel"))          { install.packages("parallel")                       ; require("parallel")           }
+if (!require("ggplot2"))           { install.packages("ggplot2")                        ; require("ggplot2")            }
+if (!require("ggrepel"))           { install.packages("ggrepel")                        ; require("ggrepel")            }
+if (!require("ggmap"))             { install.packages("ggmap")                          ; require("ggmap")              }
+if (!require("scatterpie"))        { install.packages("scatterpie")                     ; require("scatterpie")         }
+if (!require("RColorBrewer"))      { install.packages("RColorBrewer")                   ; require("RColorBrewer")       }
+if (!require("fossil"))            { install.packages("fossil")                         ; require("fossil")             }
+if (!require("vegan"))             { install.packages("vegan")                          ; require("vegan")              }
+if (!require("SNPRelate"))         { BiocManager::install("SNPRelate")                  ; require("SNPRelate")          }
+if (!require("conStruct"))         { install.packages("conStruct")                      ; require("conStruct")          }
+if (!require("constructhelpers"))  { remotes::install_github("kdm9/constructhelpers")   ; require("constructhelpers")   }
 
+knitr::opts_chunk$set(
+  warnings=F
+)
 if (file.exists("data/cache/01_hpa-geogenetics.Rda")) load(file="data/cache/01_hpa-geogenetics.Rda")
 
 NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
@@ -31,7 +36,7 @@ cat(paste("Using", NCPUS, "cores\n"))
 
 First, we need to select samples and find geographic clusters.
 
-```{r}
+```{r geo.meta}
 geo.dist.indiv = eu.geo %>%
     column_to_rownames(var = "ind") %>%
     select(longitude, latitude) %>%
@@ -48,7 +53,7 @@ clusters.
 
 Here are the cluster sizes (y clusters of size x): 
 
-```{r}
+```{r geo.clust.size}
 table(table(geo.cluster.name))
 ```
 
@@ -62,7 +67,7 @@ each geographic cluster, and remove snps with null variance.
 First,  get the indivs by snps matrix (122x500k)
 
 ```{r gdsopen}
-gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")
+gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds", allow.duplicate=T)
 gds.sum  = snpgdsSummary(gds)
 gen = snpgdsGetGeno(gds, sample.id = samp.within.eur, with.id = T)
 ```
@@ -70,7 +75,7 @@ gen = snpgdsGetGeno(gds, sample.id = samp.within.eur, with.id = T)
 Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of population
 allele frequencies. We skip columns (SNPs) with null variance. 
 
-```{r}
+```{r genpop}
 gen.pop = xfun::cache_rds({
     N.SNP = ncol(gen$genotype)
     foreach(i=seq_len(N.SNP), .combine=cbind) %do% {
@@ -91,7 +96,7 @@ Here we do some data prep, then run all the construct runs needed to do cross
 validation (NB: we don't use construct's own cross validation here as it runs
 all K sequentially which makes it take K times as long as it needs to.
 
-```{r}
+```{r geo.data}
 geo.clust.dat = eu.geo %>%
     group_by(geo.clust, pop) %>%
     summarise(latitude = mean(latitude),
@@ -110,7 +115,7 @@ the inputs to an Rds and then load the results again here for plotting and
 interpretation.
 
 
-```{r}
+```{r run.xval}
 cxv.big = xfun::cache_rds({
     kdm.x.validation <- function(train.prop = 0.9, n.reps, K, freqs = NULL, data.partitions = NULL, geoDist, coords, prefix, n.iter, make.figs = FALSE, save.files = FALSE, n.nodes=16, parallel=T, ...) {
         call.check <- conStruct:::check.xval.call(args <- as.list(environment()))
@@ -152,22 +157,121 @@ cxv.big = xfun::cache_rds({
 
 # Summarise construct cross validation
 
-First, normalise the log likelihoods
+First, collect all the bits of data together like they should have been in the original R code (not rewriting it yet as i'll make it a helper pkg soon).
+
+```{r xval.ll, message=F}
+cxv = cxv.big$res %>%
+    mutate(ll.mean = purrr::map_dbl(mdl.fit, mean, na.rm=T),
+           data.part = purrr::map(rep, function(r) cxv.big$data.parts[[r]]),
+           data.block = purrr::pmap(list(K, mdl, rep, data.part), function(k, m, r, dp) {
+                sd.dist.list = conStruct:::standardize.distances(geo.clust.dist)
+                data.partition = dp$training
+                db = list(
+                    N = nrow(geo.clust.latlong),
+                    K=k,
+                    spatial=m == "sp",
+                    L = data.partition$n.loci,
+                    coords=geo.clust.latlong,
+                    obsCov = data.partition$data,
+			        geoDist = sd.dist.list$std.D,
+			        sd.geoDist = sd.dist.list$stdev.D,
+			        varMeanFreqs = data.partition$varMeanFreqs
+                )
+                conStruct:::validate.data.block(db)
+            }))
+cxv
+```
+
+
+Here we plot the log likelihoods for each run. NB that in theory, the 
 
 ```{r}
-cxv2 = cxv$res %>%
-    mutate(ll.mean = purrr::map_dbl(mdl.fit, mean, na.rm=T)) %>%
-    select(-construct.res, -mdl.fit)
-
-ggplot(cxv2, aes(K, ll.mean)) +
+cxv.ll = cxv %>%
+    select(-construct.res, -mdl.fit) %>%
+    group_by(mdl) %>%
+    mutate(std.ll.mean = ll.mean - max(ll.mean)) %>%
+    ungroup()
+ggplot(cxv.ll, aes(K, std.ll.mean)) +
     geom_point(position="jitter") +
     facet_wrap(~mdl)+
     theme_bw()
-dev.off()
+ggsave("out/Hpa_cs_xval_ll.pdf", width=8,height=5)
 ```
 
-# Finalise
 
+```{r layer.contrib}
+layer = cxv %>%
+    group_by(mdl, K) %>%
+    mutate(layer.contrib =  purrr::map2(construct.res, data.block, function (x, y) {
+            lc = conStruct:::calculate.layer.contribution(x,y)
+            lr = 1:length(lc)
+            tibble(layer = lr, layer.contrib=sort(unlist(lc), dec=T))
+        })
+    ) %>%
+    select(mdl, K, rep, layer.contrib) %>%
+    unnest(layer.contrib)
+```
+
+```{r plot.lc}
+plot.dat =  layer %>%
+    filter(K>1) %>%
+    mutate(
+        K=as.factor(sprintf("K=%d", K)),
+        layer=as.factor(layer),
+        rep=as.factor(sprintf("Rep%02d", rep)),
+        mdl=fct_relevel(ifelse(mdl == "sp", "Spatial", "Non-Spatial"), "Spatial", "Non-Spatial")
+    )
+ggplot(plot.dat, aes(x=layer, y=layer.contrib)) +
+    geom_violin() +
+    #geom_point(aes(colour=rep)) + 
+    #scale_colour_manual(values=rainbow(length(levels(plot.dat$rep))), name="Replicate") +
+    labs(y="Layer Contribution", x="Layer (ancestral popn.)") +
+    facet_grid(mdl ~ K, scales="free_x", space = "free_x") +
+    theme_bw()
+ggsave("out/Hpa_cs_xval_lc.pdf", width=8,height=5)
+```
+
+## K=2 and K=3 Piecharts
+
+```{r eval=F, include=F}
+basemap.terr = get_stamenmap(eu.bbox, zoom=5, maptype="terrain-background")
+basemap.plt =  ggmap(basemap.terr, darken=c(0.4, "white"), legend="topleft", extent="device")
+
+qmat = cxv.big$res %>%
+    filter(K %in% 2:4) %>%
+    mutate(qmat=purrr::map(construct.res, function(cs) {
+            Q = cs$MAP$admix.proportions %>%
+                as.data.frame()
+            colnames(Q) = sprintf("L%d", 1:ncol(Q))
+            G = as.data.frame(geo.clust.latlong)
+            bind_cols(G, Q) %>%
+                gather("layer", "value", -longitude, -latitude) %>%
+                as_tibble()
+        })) %>%
+    mutate(plt =purrr::map(qmat, function(q) {
+            basemap.plt + 
+                geom_scatterpie(aes(longitude, latitude), data=q, cols="layer", long_format=TRUE, legend_name="Layer") +
+                labs(x="Longitude", y="Latitude") +
+                theme_bw()
+        }))
+```
+
+Here we use conStruct's `make.all.the.plots` to generate plots for each run.
+
+```{r matp}
+if (!dir.exists("out/matp/Hpa_csbig")) dir.create("out/matp/Hpa_csbig", recursive = T)
+
+cxv %>%
+    filter(K %in% 1:4, rep %in% 1:4) %>%
+    mutate(code=sprintf("K%d_%s_rep%d", K, mdl, rep)) %>%
+    select(code, construct.res, data.block) %>%
+    purrr::pmap(function(code, construct.res, data.block) {
+            conStruct::make.all.the.plots(list(chain_1=construct.res), data.block, paste0("out/matp/Hpa_csbig/", code, ".pdf"))
+        }) %>%
+    invisible()
+```
+
+
+<!-- FINALISE & CLEAN UP -->
 ```{r cleanup, include=F, cache=F}
-save.image(file="data/cache/02_construct.Rda", compress="xz")
 ```
