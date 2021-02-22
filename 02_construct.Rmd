@@ -138,16 +138,16 @@ cxv = xfun::cache_rds({
 Here we plot the log likelihoods for each run. NB that in theory, the 
 
 ```{r}
-cxv.ll = cxv %>%
+cxv.std.fit = cxv %>%
     select(-construct.res, -mdl.fit) %>%
     group_by(mdl) %>%
-    mutate(std.ll.mean = ll.mean - max(ll.mean)) %>%
+    mutate(std.fit = mean.fit - max(mean.fit)) %>%
     ungroup()
-ggplot(cxv.ll, aes(K, std.ll.mean)) +
+ggplot(cxv.std.fit, aes(K, std.fit)) +
     geom_point(position="jitter") +
     facet_wrap(~mdl)+
     theme_bw()
-ggsave("out/Hpa_cs_xval_ll.pdf", width=8,height=5)
+ggsave("out/Hpa_cs_v2/Hpa_cs_xval_ll.pdf", width=8,height=5)
 ```
 
 
@@ -180,50 +180,22 @@ ggplot(plot.dat, aes(x=layer, y=layer.contrib)) +
     labs(y="Layer Contribution", x="Layer (ancestral popn.)") +
     facet_grid(mdl ~ K, scales="free_x", space = "free_x") +
     theme_bw()
-ggsave("out/Hpa_cs_xval_lc.pdf", width=8,height=5)
+ggsave("out/Hpa_cs_v2/Hpa_cs_xval_lc.pdf", width=8,height=5)
 ```
 
 ## K=2 and K=3 Piecharts
 
-```{r eval=F, include=F}
-basemap.terr = get_stamenmap(eu.bbox, zoom=5, maptype="terrain-background")
-basemap.plt =  ggmap(basemap.terr, darken=c(0.4, "white"), legend="topleft", extent="device")
-
-qmat = cxv.big$res %>%
-    filter(K %in% 2:4) %>%
-    mutate(qmat=purrr::map(construct.res, function(cs) {
-            Q = cs$MAP$admix.proportions %>%
-                as.data.frame()
-            colnames(Q) = sprintf("L%d", 1:ncol(Q))
-            G = as.data.frame(geo.clust.latlong)
-            bind_cols(G, Q) %>%
-                gather("layer", "value", -longitude, -latitude) %>%
-                as_tibble()
-        })) %>%
-    mutate(plt =purrr::map(qmat, function(q) {
-            basemap.plt + 
-                geom_scatterpie(aes(longitude, latitude), data=q, cols="layer", long_format=TRUE, legend_name="Layer") +
-                labs(x="Longitude", y="Latitude") +
-                theme_bw()
-        }))
-```
-
-Here we use conStruct's `make.all.the.plots` to generate plots for each run.
+Here we use conStruct's `make.all.the.plots` to generate plots for each run for K in 1:4.
 
 ```{r matp}
-if (!dir.exists("out/matp/Hpa_csbig")) dir.create("out/matp/Hpa_csbig", recursive = T)
+if (!dir.exists("out/Hpa_cs_v2/matp/")) dir.create("out/Hpa_cs_v2/matp/", recursive=T)
 
 cxv %>%
     filter(K %in% 1:4, rep %in% 1:4) %>%
     mutate(code=sprintf("K%d_%s_rep%d", K, mdl, rep)) %>%
     select(code, construct.res, data.block) %>%
     purrr::pmap(function(code, construct.res, data.block) {
-            conStruct::make.all.the.plots(list(chain_1=construct.res), data.block, paste0("out/matp/Hpa_csbig/", code, ".pdf"))
+            conStruct::make.all.the.plots(list(chain_1=construct.res), data.block, paste0("out/Hpa_cs_v2/matp/Hpa_cs_v2_", code, ".pdf"))
         }) %>%
     invisible()
-```
-
-
-<!-- FINALISE & CLEAN UP -->
-```{r cleanup, include=F, cache=F}
 ```
