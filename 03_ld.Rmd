@@ -92,7 +92,3 @@ bpdist = dist(geno$POS[which.snp.ld])
 image(correl, main="first10k ctg1")
 plot(correl ~ as.matrix(bpdist), pch=".", col=transparent.black)
 ```
-
-```{r cleanup}
-save.image(file="data/cache/03_hpa-ld.Rda", compress="xz")
-```
