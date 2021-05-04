@@ -20,6 +20,7 @@ NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
 registerDoParallel(cores=NCPUS)
 cat(paste("Using", NCPUS, "cores\n"))
 theme_set(theme_bw())
+if (!dir.exists("out/LD")) dir.create("out/LD")
 ```
 
 # Calculate LD across genome
@@ -47,7 +48,9 @@ halfmax.plot = halfmax %>%
 
 ggplot(halfmax.plot, aes(culmpos, halfmax)) +
     geom_line() +
+    labs(x="Genome Position", y="Half-maximal R2 distance (bp)") +
     scale_y_log10()
+ggsave("out/LD/halfmax-LD-over-genome.pdf", width=8, height=5)
 ```
 
 So, by eye, LD extends between 10kb and 100kb, varying considerably across the genome.
@@ -76,10 +79,9 @@ transparent.black = rgb(0, 0, 0, alpha = 15, maxColorValue = 255)
 which.snp.randsubset = sort(sample(seq_len(geno$nSNP))[1:10000])
 minigt = geno$GT[,which.snp.randsubset]
 correl = cor(minigt, use="pairwise.complete.obs") ^ 2
-bpdist = dist(geno$POS[which.snp.ld])
+bpdist = dist(geno$POS[which.snp.randsubset])
 image(correl, main="Subsampled ctg1")
 plot(correl ~ as.matrix(bpdist), pch=".", col=transparent.black)
-
 ```
 
 This next block is the first 10k snps (about 1/3 the contig) without subsampling.
@@ -91,4 +93,8 @@ correl = cor(minigt, use="pairwise.complete.obs") ^ 2
 bpdist = dist(geno$POS[which.snp.ld])
 image(correl, main="first10k ctg1")
 plot(correl ~ as.matrix(bpdist), pch=".", col=transparent.black)
+pdf("out/LD/first10ksnp.pdf")
+image(correl, main="first10k ctg1")
+plot(correl ~ as.matrix(bpdist), pch=".", col=transparent.black)
+dev.off()
 ```

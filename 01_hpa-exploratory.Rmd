@@ -1,4 +1,4 @@
----
+f--
 title: Exporatory genetics of HpA
 date: 2020-11-20
 author: Kevin Murray
@@ -19,6 +19,7 @@ if (!require("gdm"))          { install.packages("gdm")           ; require("gdm
 if (!require("ecodist"))      { install.packages("ecodist")       ; require("ecodist")      }
 if (!require("SNPRelate"))    { BiocManager::install("SNPRelate") ; require("SNPRelate")    }
 if (file.exists("data/01_hpa-geogenetics.Rda")) load(file="data/01_hpa-geogenetics.Rda")
+if (!dir.exists("out/plot")) dir.create("out/plot", recursive=T)
 ```
 
 # Genotype data
@@ -78,7 +79,7 @@ is frequently the rarer allele.
 ### Set thresholds
 
 ```{r set.thresh}
-sample.missing.thresh = 1
+sample.missing.thresh = 0.2
 snp.missing.thresh = 0.3
 ```
 
@@ -134,6 +135,7 @@ p + geom_point(aes(longitude, latitude, colour=pop), data=eu.geo,
     labs(x="Longitude", y="Latitude") +
     scale_colour_discrete(name="Population") + 
     theme_bw()
+ggsave("out/plot/01_samples-within-europe-map.svg")
 ```
 
 
@@ -189,4 +191,6 @@ plot(mdl, include.rug=T, rug.sitepair=sp)
 
 ```{r cleanup}
 save.image(file="data/01_hpa-geogenetics.Rda", compress="xz")
+save(sample.missing.thresh, snp.missing.thresh, samp.within.eur,
+     file="data/sample_selection.Rda", compress="xz")
 ```
