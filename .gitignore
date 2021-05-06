@@ -4,6 +4,5 @@ Rplots.pdf
 *_files/
 *_cache/
 *.html
-data/lfmm
+data/tmp
 out
-!out/cache
