@@ -5,7 +5,6 @@
 
 library(tidyverse)
 library(LEA)
-library(raster)
 library(SNPRelate)
 library(foreach)
 library(doParallel)
@@ -17,39 +16,15 @@ load("data/sample_selection.Rda", verbose=T)
 
 meta = read_csv("data/finalInds.AllGeoInfo.csv")
 
-
-# # Climate
-#
 # In order to associate our G with an E in a GEA, we need some 'E'.
 # Specifcically, Bioclim variables for each population/sampling point.
 # We need to use the raster package to extract these from the WorldClim2
 # Bioclim 30s layer TIFFs. 
+#
+# I have added the climate variables to the metadata in a previous notebook,
+# the results of which I load below.
 
-rasters = do.call("stack", lapply(1:19,
-    function (i) raster(sprintf("/data/kevin/work/gis/WorldClim2/wc2.0_bio_30s_%02d.tif", i),
-                        varname=sprintf("Bio%02d", i))))
-
-meta.env = meta %>%
-    dplyr::filter(ind %in% samp.within.eur)
-coordinates(meta.env) = ~ longitude + latitude
-
-meta.env =  bind_cols(
-    meta.env %>%
-        as.data.frame(),
-    extract(rasters, meta.env) %>%
-        as.data.frame() %>%
-        rename_with(function(x) gsub("wc2.0_bio_30s_([0-9]+)", "Bio\\1", x, perl=T))
-)
-
-# Let's plot the 19 bioclim variables and lat/long to see any overall trends.
-# We expect some significant inter-variable correlation, as many of the bioclim
-# variables are essentially reformulations of each other.
-
-meta.env %>%
-    dplyr::select(-ind, -loc, -pop) %>%
-    as.data.frame() %>%
-    plot()
-
+meta.env = read_tsv("data/climate-metadata.tsv")
 
 # # Genetics
 #
