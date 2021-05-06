@@ -1,5 +1,5 @@
 .PHONY: all
-all: 01_hpa-exploratory.html 02_construct.html 03_ld.html 04_lostruct.html
+all: 00_metadata.html 01_hpa-exploratory.html 02_construct.html 03_ld.html 04_lostruct.html 05_lfmm.html
 
 .PHONY: clean
 clean:
