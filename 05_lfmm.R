@@ -15,6 +15,7 @@ load("data/sample_selection.Rda", verbose=T)
 # # Metadata
 
 meta = read_csv("data/finalInds.AllGeoInfo.csv")
+samp.within.eur.geno.ok = readLines("data/metadata/samples_within_europe_genotype_ok.txt")
 
 # In order to associate our G with an E in a GEA, we need some 'E'.
 # Specifcically, Bioclim variables for each population/sampling point.
@@ -24,7 +25,7 @@ meta = read_csv("data/finalInds.AllGeoInfo.csv")
 # I have added the climate variables to the metadata in a previous notebook,
 # the results of which I load below.
 
-meta.env = read_tsv("data/climate-metadata.tsv")
+meta.env = read_tsv("data/metadata/europe-metadata-env.tsv")
 
 # # Genetics
 #
@@ -32,7 +33,7 @@ meta.env = read_tsv("data/climate-metadata.tsv")
 
 gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds")
 
-snp.stats = snpgdsSNPRateFreq(gds, sample.id=samp.within.eur)
+snp.stats = snpgdsSNPRateFreq(gds, sample.id=samp.within.eur.geno.ok)
 
 # ## SNP Filtering
 #
