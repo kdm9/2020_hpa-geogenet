@@ -9,7 +9,6 @@ library(SNPRelate)
 library(foreach)
 library(doParallel)
 if (!dir.exists("data/cache/05_lfmm/")) dir.create("data/cache/05_lfmm")
-load("data/sample_selection.Rda", verbose=T)
 
 
 # # Metadata

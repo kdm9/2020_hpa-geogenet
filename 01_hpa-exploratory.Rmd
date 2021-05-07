@@ -113,6 +113,7 @@ samp.geno.ok = gds.sum$sample.id[samp.miss < sample.missing.thresh]
 writeLines(samp.geno.ok, "data/metadata/samples_genotype_ok.txt")
 samp.within.eur = readLines("data/metadata/samples_within_europe.txt")
 samp.within.eur.geno.ok = intersect(samp.within.eur, samp.geno.ok)
+writeLines(samp.within.eur.geno.ok, "data/metadata/samples_within_europe_genotype_ok.txt")
 ```
 
 # Distance-based Popgen
