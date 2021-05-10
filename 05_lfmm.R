@@ -69,7 +69,7 @@ mean(snp.mask)
 snp.mask.id = which(snp.mask)
 
 
-gn.list = snpgdsGetGeno(gds, sample.id=samp.within.eur, snp.id=snp.mask.id, with.id=T, verbose=T)
+gn.list = snpgdsGetGeno(gds, sample.id=samp.within.eur.geno.ok, snp.id=snp.mask.id, with.id=T, verbose=T)
 gn = gn.list$genotype
 rownames(gn) = gn.list$sample.id
 colnames(gn) = gn.list$snp.id
@@ -81,7 +81,7 @@ dim(gn)
 
 contigs = windowlickr:::bcf_getContigs("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.vcf.gz") %>%
     mutate(offsets = cumsum(c(0, lengths[-length(lengths)])))
-snp.list = snpgdsSNPList(gds, sample.id=samp.within.eur)[snp.mask,]
+snp.list = snpgdsSNPList(gds, sample.id=samp.within.eur.geno.ok)[snp.mask,]
 
 
 # # LFMM

@@ -86,7 +86,7 @@ snp.mask.id = which(snp.mask)
 
 
 ```{r}
-gn.list = snpgdsGetGeno(gds, sample.id=samp.within.eur, snp.id=snp.mask.id, with.id=T, verbose=T)
+gn.list = snpgdsGetGeno(gds, sample.id=samp.within.eur.geno.ok, snp.id=snp.mask.id, with.id=T, verbose=T)
 gn = gn.list$genotype
 rownames(gn) = gn.list$sample.id
 colnames(gn) = gn.list$snp.id
@@ -100,7 +100,7 @@ positions etc.
 ```{r}
 contigs = windowlickr:::bcf_getContigs("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.vcf.gz") %>%
     mutate(offsets = cumsum(c(0, lengths[-length(lengths)])))
-snp.list = snpgdsSNPList(gds, sample.id=samp.within.eur)[snp.mask,]
+snp.list = snpgdsSNPList(gds, sample.id=samp.within.eur.geno.ok)[snp.mask,]
 ```
 
 
@@ -128,7 +128,7 @@ gn4lea[is.na(gn4lea)] = 9
 
 ```{r}
 # then write genotype data to both a .geno and a .lfmm file
-if (!dir.exists("data/tmp/lfmm")) dir.create("data/tmp/lfmm")
+if (!dir.exists("data/tmp/lfmm")) dir.create("data/tmp/lfmm", recurisve=T)
 write.geno(gn4lea, "data/tmp/lfmm/genotypes.geno")
 write.lfmm(gn4lea, "data/tmp/lfmm/genotypes.lfmm")
 ```
