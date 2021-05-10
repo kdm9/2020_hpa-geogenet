@@ -1,12 +1,12 @@
----
-title: Construct on Hpa
-date: 2021-01-02
-author: Kevin Murray
----
+# ---
+# title: Construct on Hpa
+# date: 2021-01-02
+# author: Kevin Murray
+# ---
 
-Have now separated out the conStruct notebook.
+# Construct models population structure as a combination of discrete and
+# continuous structure.
 
-```{r setup, include=F, cache=F}
 if (!require("tidyverse"))         { install.packages("tidyverse")                      ; require("tidyverse")          }
 if (!require("foreach"))           { install.packages("foreach")                        ; require("foreach")            }
 if (!require("doParallel"))        { install.packages("doParallel")                     ; require("doParallel")         }
@@ -30,13 +30,11 @@ if (file.exists("data/cache/01_hpa-geogenetics.Rda")) load(file="data/cache/01_h
 NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
 registerDoParallel(cores=NCPUS)
 cat(paste("Using", NCPUS, "cores\n"))
-```
 
-## Geographic clustering
+# ## Geographic clustering
+#
+# First, we need to select samples and find geographic clusters.
 
-First, we need to select samples and find geographic clusters.
-
-```{r geo.meta}
 geo.dist.indiv = eu.geo %>%
     column_to_rownames(var = "ind") %>%
     dplyr::select(longitude, latitude) %>%
@@ -46,36 +44,29 @@ geo.clust.indiv = geo.dist.indiv %>%
     cutree(h=5) # cut at 5km radius
 geo.cluster.name = sprintf("GC%02d", geo.clust.indiv)
 eu.geo$geo.clust = geo.cluster.name
-```
 
-So at a population radius of 5km, we have `r length(geo.cluster.name)`
-clusters.
 
-Here are the cluster sizes (y clusters of size x): 
+# So at a population radius of 5km, we have `r length(geo.cluster.name)`
+# clusters.
+#
+# Here are the cluster sizes (y clusters of size x): 
 
-```{r geo.clust.size}
 table(table(geo.cluster.name))
-```
 
+# ## Basic genetics
+#
+# Here we need to extract the SNP data, and reduce it to allele frequencies at
+# each geographic cluster, and remove snps with null variance.
 
-## Basic genetics
+# First,  get the indivs by snps matrix (122x500k)
 
-Here we need to extract the SNP data, and reduce it to allele frequencies at
-each geographic cluster, and remove snps with null variance.
-
-
-First,  get the indivs by snps matrix (122x500k)
-
-```{r gdsopen}
 gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds", allow.duplicate=T)
 gds.sum  = snpgdsSummary(gds)
 gen = snpgdsGetGeno(gds, sample.id = samp.within.eur, with.id = T)
-```
 
-Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of population
-allele frequencies. We skip columns (SNPs) with null variance. 
+# Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of population
+# allele frequencies. We skip columns (SNPs) with null variance. 
 
-```{r genpop}
 gen.pop = xfun::cache_rds({
     N.SNP = ncol(gen$genotype)
     foreach(i=seq_len(N.SNP), .combine=cbind) %do% {
@@ -86,17 +77,15 @@ gen.pop = xfun::cache_rds({
         tapply(gen$genotype[, i], geo.cluster.name, function(x) {mean(x, na.rm=T)/2})
     }
 }, file="02_01_genpop", dir="data/cache/",  compress="xz")
-```
 
 
+# ## Run construct
+#
+# Here we do some data prep, then run all the construct runs needed to do cross
+# validation (NB: we don't use construct's own cross validation here as it runs
+# all K sequentially which makes it take K times as long as it needs to.
 
-## Run construct
 
-Here we do some data prep, then run all the construct runs needed to do cross
-validation (NB: we don't use construct's own cross validation here as it runs
-all K sequentially which makes it take K times as long as it needs to.
-
-```{r geo.data}
 geo.clust.dat = eu.geo %>%
     group_by(geo.clust, pop) %>%
     summarise(latitude = mean(latitude),
@@ -108,13 +97,13 @@ geo.clust.latlong = geo.clust.dat %>%
 geo.clust.dist = geo.clust.latlong %>%
     fossil::earth.dist() %>%
     as.matrix()
-```
 
-So to run construct we shell out to the cluster, as it takes ages. So, we save
-the inputs to an Rds and then load the results again here for plotting and
-interpretation.
 
-```{r run.xval}
+# So to run construct we shell out to the cluster, as it takes ages. So, we save
+# the inputs to an Rds and then load the results again here for plotting and
+# interpretation.
+
+
 if (!dir.exists("out/Hpa_cs_v2/")) dir.create("out/Hpa_cs_v2/")
 cxv = xfun::cache_rds({
     constructhelpers::csh.x.validation(
@@ -130,14 +119,12 @@ cxv = xfun::cache_rds({
         save.files=F,
         make.figs=T)
 }, file="02_02_cs_xval", dir="data/cache/",  compress="xz")
-```
-
-# Summarise construct cross validation
 
 
-Here we plot the log likelihoods for each run. NB that in theory, the 
+# # Summarise construct cross validation
 
-```{r}
+# Here we plot the log likelihoods for each run. NB that in theory, the 
+
 cxv.std.fit = cxv %>%
     select(-construct.res, -mdl.fit) %>%
     group_by(mdl) %>%
@@ -148,10 +135,8 @@ ggplot(cxv.std.fit, aes(K, std.fit)) +
     facet_wrap(~mdl)+
     theme_bw()
 ggsave("out/Hpa_cs_v2/Hpa_cs_xval_ll.pdf", width=8,height=5)
-```
 
 
-```{r layer.contrib}
 layer = cxv %>%
     group_by(mdl, K) %>%
     mutate(layer.contrib =  purrr::map2(construct.res, data.block, function (x, y) {
@@ -162,9 +147,7 @@ layer = cxv %>%
     ) %>%
     select(mdl, K, rep, layer.contrib) %>%
     unnest(layer.contrib)
-```
 
-```{r plot.lc}
 plot.dat =  layer %>%
     filter(K>1) %>%
     mutate(
@@ -181,13 +164,13 @@ ggplot(plot.dat, aes(x=layer, y=layer.contrib)) +
     facet_grid(mdl ~ K, scales="free_x", space = "free_x") +
     theme_bw()
 ggsave("out/Hpa_cs_v2/Hpa_cs_xval_lc.pdf", width=8,height=5)
-```
 
-## K=2 and K=3 Piecharts
 
-Here we use conStruct's `make.all.the.plots` to generate plots for each run for K in 1:4.
+# ## K=2 and K=3 Piecharts
+#
+# Here we use conStruct's `make.all.the.plots` to generate plots for each run for K in 1:4.
 
-```{r matp}
+
 if (!dir.exists("out/Hpa_cs_v2/matp/")) dir.create("out/Hpa_cs_v2/matp/", recursive=T)
 
 cxv %>%
@@ -198,8 +181,6 @@ cxv %>%
             conStruct::make.all.the.plots(list(chain_1=construct.res), data.block, paste0("out/Hpa_cs_v2/matp/Hpa_cs_v2_", code, ".pdf"))
         }) %>%
     invisible()
-```
 
 
-
-# Paper plots
+# # Paper plots

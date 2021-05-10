@@ -1,36 +1,48 @@
 .PHONY: all
-nb := $(patsubst %.R,%.ipynb,$(wildcard *.R)) \
-	  $(patsubst %.py,%.ipynb,$(wildcard *.py))  \
-	  $(patsubst %.sh,%.ipynb,$(wildcard *.sh))
-rmd := $(patsubst %.ipynb,%.Rmd,$(nb))
-ipynb.html := $(patsubst %.ipynb,%.html,$(nb))
+rmd := $(patsubst %.R,%.Rmd,$(wildcard *.R)) \
+	   $(patsubst %.py,%.Rmd,$(wildcard *.py))  \
+	   $(patsubst %.sh,%.Rmd,$(wildcard *.sh))
 
-all: $(rmd) $(nb)
+.PRECIOUS: %.Rmd
 
-.PHONY: clean
-clean:
-	@echo rm -rf *_cache/ *_files/ *.html
+outmd := $(patsubst %.Rmd,%.out.md,$(rmd))
+outhtml := $(patsubst %.Rmd,%.html,$(rmd))
 
-%.Rmd: %.R
-	jupytext --to Rmd '$^'
 
-%.Rmd: %.py
-	jupytext --to Rmd '$^'
+#all: $(rmd)
+#md: $(outmd)
+#html: $(outhtml)
+#
+#.PHONY: clean
+#clean:
+#	@echo rm -rf *_cache/ *_files/ *.html
+#
+#%.Rmd: %.R
+#	jupytext --to Rmd '$^'
+#
+#%.Rmd: %.py
+#	jupytext --to Rmd '$^'
+#
+#%.Rmd: %.sh
+#	jupytext --to Rmd '$^'
+#
+#%.md %.html: %.Rmd
+#	Rscript -e 'rmarkdown::render("$^", rmarkdown::html_document(keep_md=T), output_file="$@")'
 
-%.Rmd: %.sh
-	jupytext --to Rmd '$^'
+ipynb := $(patsubst %.Rmd,%.ipynb,$(rmd))
+ipynb_html := $(patsubst %.ipynb,%.html,$(nb))
+nb_html: $(ipynb_html)
+
+.PRECIOUS: %.ipynb
 
 %.ipynb: %.R
-	jupytext --to ipynb --output '$@' '$^'
+	jupytext --to ipynb --execute --output '$@' '$^'
 
 %.ipynb: %.py
-	jupytext --to ipynb --output '$@' '$^'
+	jupytext --to ipynb --execute --output '$@' '$^'
 
 %.ipynb: %.sh
-	jupytext --to ipynb --output '$@' '$^'
+	jupytext --to ipynb --execute --output '$@' '$^'
 	
-%.Rmd.html: %.Rmd
-	Rscript -e 'rmarkdown::render("$^", output_format="html_document", output_file="$@")'
-
-%.ipynb.html: %.ipynb
-	Rscript -e 'rmarkdown::render("$^", output_format="html_document", output_file="$@")'
+%.html: %.ipynb
+	jupyter nbconvert --output $@ --to html --no-prompt $^ 

@@ -1,6 +1,19 @@
 # ---
 # title: Basic metadata processing of HpA data
 # author: K.D. Murray
+# jupyter:
+#   jupytext:
+#     cell_metadata_filter: -all
+#     formats: R:light
+#     text_representation:
+#       extension: .R
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.11.2
+#   kernelspec:
+#     display_name: R
+#     language: R
+#     name: ir
 # ---
 
 library(tidyverse)

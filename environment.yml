@@ -9,6 +9,7 @@ dependencies:
   - libcurl
   - pynvim
   - r
+  - r-irkernel
   - r-biocmanager
   - r-svglite
   - r-tidyverse

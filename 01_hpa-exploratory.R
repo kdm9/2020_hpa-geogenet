@@ -130,8 +130,8 @@ snp.ibs.goodeu %>%
     snpgdsCutTree() %>%
     snpgdsDrawTree()
 
-## When removing the american and poor quality samples, not much changes in the
-## dendrogram. We can also plot the distance matrix directly:
+# When removing the american and poor quality samples, not much changes in the
+# dendrogram. We can also plot the distance matrix directly:
 
 image(1- snp.ibs.goodeu$ibs)
 
