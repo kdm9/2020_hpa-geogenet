@@ -109,11 +109,13 @@ write.lfmm(gn4lea, "data/tmp/lfmm/genotypes.lfmm")
 
 # and then env data
 env4lea = meta.env %>%
+    dplyr::slice(match(samp.within.eur.geno.ok, ind)) %>%
     dplyr::select(-loc, -pop) %>%
     remove_rownames() %>%
     column_to_rownames("ind")
 write.env(env4lea, "data/tmp/lfmm/env-latlon.env")
 
+all(rownames(env4lea) ==  rownames(gn))
 
 # ## PCA
 #

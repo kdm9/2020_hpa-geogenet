@@ -128,7 +128,7 @@ gn4lea[is.na(gn4lea)] = 9
 
 ```{r}
 # then write genotype data to both a .geno and a .lfmm file
-if (!dir.exists("data/tmp/lfmm")) dir.create("data/tmp/lfmm", recurisve=T)
+if (!dir.exists("data/tmp/lfmm")) dir.create("data/tmp/lfmm")
 write.geno(gn4lea, "data/tmp/lfmm/genotypes.geno")
 write.lfmm(gn4lea, "data/tmp/lfmm/genotypes.lfmm")
 ```
@@ -136,12 +136,16 @@ write.lfmm(gn4lea, "data/tmp/lfmm/genotypes.lfmm")
 ```{r}
 # and then env data
 env4lea = meta.env %>%
+    dplyr::slice(match(samp.within.eur.geno.ok, ind)) %>%
     dplyr::select(-loc, -pop) %>%
     remove_rownames() %>%
     column_to_rownames("ind")
 write.env(env4lea, "data/tmp/lfmm/env-latlon.env")
 ```
 
+```{r}
+all(rownames(env4lea) ==  rownames(gn))
+```
 
 ## PCA
 

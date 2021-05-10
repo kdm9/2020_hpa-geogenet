@@ -1,5 +1,11 @@
 .PHONY: all
-all: 00_metadata.html 01_hpa-exploratory.html 02_construct.html 03_ld.html 04_lostruct.html 05_lfmm.html
+nb := $(patsubst %.R,%.ipynb,$(wildcard *.R)) \
+	  $(patsubst %.py,%.ipynb,$(wildcard *.py))  \
+	  $(patsubst %.sh,%.ipynb,$(wildcard *.sh))
+rmd := $(patsubst %.ipynb,%.Rmd,$(nb))
+ipynb.html := $(patsubst %.ipynb,%.html,$(nb))
+
+all: $(rmd) $(nb)
 
 .PHONY: clean
 clean:
@@ -7,6 +13,24 @@ clean:
 
 %.Rmd: %.R
 	jupytext --to Rmd '$^'
+
+%.Rmd: %.py
+	jupytext --to Rmd '$^'
+
+%.Rmd: %.sh
+	jupytext --to Rmd '$^'
+
+%.ipynb: %.R
+	jupytext --to ipynb --output '$@' '$^'
+
+%.ipynb: %.py
+	jupytext --to ipynb --output '$@' '$^'
+
+%.ipynb: %.sh
+	jupytext --to ipynb --output '$@' '$^'
 	
-%.html: %.Rmd
-	Rscript -e 'rmarkdown::render("$^", output_format="html_document")'
+%.Rmd.html: %.Rmd
+	Rscript -e 'rmarkdown::render("$^", output_format="html_document", output_file="$@")'
+
+%.ipynb.html: %.ipynb
+	Rscript -e 'rmarkdown::render("$^", output_format="html_document", output_file="$@")'

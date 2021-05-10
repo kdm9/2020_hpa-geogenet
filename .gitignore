@@ -4,5 +4,6 @@ Rplots.pdf
 *_files/
 *_cache/
 *.html
+*.ipynb
 data/tmp
 out
