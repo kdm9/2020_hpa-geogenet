@@ -8,7 +8,11 @@ library(doParallel)
 if (!dir.exists("data/cache/05_lfmm/")) dir.create("data/cache/05_lfmm")
 load("data/cache/05_lfmm/lfmm-inputs.Rds", verbose=T)
 
-NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
+Sys.setenv("OMP_NUM_THREADS"=1)
+Sys.setenv("OPENBLAS_NUM_THREADS"=1)
+Sys.setenv("MKL_NUM_THREADS"=1)
+
+NCPUS = as.integer(Sys.getenv("NCPUS", Sys.getenv("NSLOTS", parallel::detectCores(logical=F))))
 registerDoParallel(cores=NCPUS)
 cat(paste("Using", NCPUS, "cores\n"))
 

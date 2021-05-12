@@ -147,7 +147,7 @@ nmf = xfun::cache_rds({
                entropy=T,
                repetitions=4,
                project="new")
-}, file="snmf", dir="data/cache/05_lfmm")
+}, file="snmf", dir="data/cache/05_lfmm/")
 
 # Now we plot the cross-entropy (the SNMF loss function).  We are running SNMF
 # on our population as the imputation is done based on this model of admixture.
