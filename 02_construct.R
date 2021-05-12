@@ -22,9 +22,6 @@ if (!require("SNPRelate"))         { BiocManager::install("SNPRelate")          
 if (!require("conStruct"))         { install.packages("conStruct")                      ; require("conStruct")          }
 if (!require("constructhelpers"))  { remotes::install_github("kdm9/constructhelpers")   ; require("constructhelpers")   }
 
-knitr::opts_chunk$set(
-  warnings=F
-)
 if (file.exists("data/cache/01_hpa-geogenetics.Rda")) load(file="data/cache/01_hpa-geogenetics.Rda")
 
 NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))

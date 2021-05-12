@@ -123,10 +123,12 @@ all(rownames(env4lea) ==  rownames(gn))
 #
 # A precursor to imputation is PCA
 
-pc = pca("data/tmp/lfmm/genotypes.lfmm", scale=T)
+setwd("data/tmp/lfmm")
+pc = pca("genotypes.lfmm", scale=T)
 tw = tracy.widom(pc)
 plot(10 * -log10(tw$pvalues))
 which(tw$pvalues < 1e-4)
+setwd("../../../")
 
 
 # ## SNMF
@@ -141,13 +143,13 @@ which(tw$pvalues < 1e-4)
 
 nmf = xfun::cache_rds({
     snmf("data/tmp/lfmm/genotypes.geno",
-               K=1:20,
+               K=seq(2,20,2),
                CPU=NCPUS,
                iterations=100,
                entropy=T,
                repetitions=4,
                project="new")
-}, file="snmf", dir="data/cache/05_lfmm")
+}, file="snmf-18", dir="data/cache/05_lfmm")
 
 # Now we plot the cross-entropy (the SNMF loss function).  We are running SNMF
 # on our population as the imputation is done based on this model of admixture.
@@ -195,7 +197,7 @@ impute(nmf, "data/tmp/lfmm/genotypes.lfmm",
 
 lfmm.res = lfmm2("data/tmp/lfmm/genotypes.lfmm_imputed.lfmm",
                  "data/tmp/lfmm/env-latlon.env",
-                 K=nmf.K, CPU=NCPUS)
+                 K=nmf.K)
 
 lfmm.pv = lfmm2.test(lfmm.res, "data/tmp/lfmm/genotypes.lfmm_imputed.lfmm",
                      "data/tmp/lfmm/env-latlon.env",  linear = TRUE)
