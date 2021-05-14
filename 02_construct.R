@@ -14,7 +14,6 @@ if (!require("parallel"))          { install.packages("parallel")               
 if (!require("ggplot2"))           { install.packages("ggplot2")                        ; require("ggplot2")            }
 if (!require("ggrepel"))           { install.packages("ggrepel")                        ; require("ggrepel")            }
 if (!require("ggmap"))             { install.packages("ggmap")                          ; require("ggmap")              }
-if (!require("scatterpie"))        { install.packages("scatterpie")                     ; require("scatterpie")         }
 if (!require("RColorBrewer"))      { install.packages("RColorBrewer")                   ; require("RColorBrewer")       }
 if (!require("fossil"))            { install.packages("fossil")                         ; require("fossil")             }
 if (!require("vegan"))             { install.packages("vegan")                          ; require("vegan")              }
@@ -22,17 +21,28 @@ if (!require("SNPRelate"))         { BiocManager::install("SNPRelate")          
 if (!require("conStruct"))         { install.packages("conStruct")                      ; require("conStruct")          }
 if (!require("constructhelpers"))  { remotes::install_github("kdm9/constructhelpers")   ; require("constructhelpers")   }
 
-if (file.exists("data/cache/01_hpa-geogenetics.Rda")) load(file="data/cache/01_hpa-geogenetics.Rda")
+library(ggspatial)
+library("ggplot2")
+library("sf")
+library("rnaturalearth")
+library("rnaturalearthdata")
+library(ggforce)
+theme_set(theme_bw())
+
+
+if (!dir.exists("out/Hpa_cs_v2/")) dir.create("out/Hpa_cs_v2/")
 
 NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
 registerDoParallel(cores=NCPUS)
 cat(paste("Using", NCPUS, "cores\n"))
 
+
 # ## Geographic clustering
 #
 # First, we need to select samples and find geographic clusters.
 
-geo.dist.indiv = eu.geo %>%
+meta = read_tsv("data/metadata/europe-metadata.tsv")
+geo.dist.indiv = meta %>%
     column_to_rownames(var = "ind") %>%
     dplyr::select(longitude, latitude) %>%
     fossil::earth.dist()
@@ -40,8 +50,9 @@ geo.clust.indiv = geo.dist.indiv %>%
     hclust() %>%
     cutree(h=5) # cut at 5km radius
 geo.cluster.name = sprintf("GC%02d", geo.clust.indiv)
-eu.geo$geo.clust = geo.cluster.name
+meta$geo.clust = geo.cluster.name
 
+samp.within.eur.geno.ok = readLines("data/metadata/samples_within_europe_genotype_ok.txt")
 
 # So at a population radius of 5km, we have `r length(geo.cluster.name)`
 # clusters.
@@ -59,7 +70,7 @@ table(table(geo.cluster.name))
 
 gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds", allow.duplicate=T)
 gds.sum  = snpgdsSummary(gds)
-gen = snpgdsGetGeno(gds, sample.id = samp.within.eur, with.id = T)
+gen = snpgdsGetGeno(gds, sample.id = samp.within.eur.geno.ok, with.id = T)
 
 # Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of population
 # allele frequencies. We skip columns (SNPs) with null variance. 
@@ -83,7 +94,7 @@ gen.pop = xfun::cache_rds({
 # all K sequentially which makes it take K times as long as it needs to.
 
 
-geo.clust.dat = eu.geo %>%
+geo.clust.dat = meta %>%
     group_by(geo.clust, pop) %>%
     summarise(latitude = mean(latitude),
               longitude = mean(longitude)) %>%
@@ -100,8 +111,6 @@ geo.clust.dist = geo.clust.latlong %>%
 # the inputs to an Rds and then load the results again here for plotting and
 # interpretation.
 
-
-if (!dir.exists("out/Hpa_cs_v2/")) dir.create("out/Hpa_cs_v2/")
 cxv = xfun::cache_rds({
     constructhelpers::csh.x.validation(
         prefix="out/Hpa_cs_v2/HpA_cs_v2",
@@ -181,3 +190,73 @@ cxv %>%
 
 
 # # Paper plots
+#
+# We need two plots for the paper: a structure-style barplot with both Gautam's
+# ADMIXTURE result, and the barplots from conStruct, and a pie-chart figure but
+# overlaid on a basemap of europe.
+
+
+plt = cxv %>%
+    filter(mdl == "sp", K %in% 2:3, rep==1) %>%
+    mutate(coords = purrr::map(data.block,
+               function(x) 
+                   x[["coords"]]%>%
+                       as_tibble() %>%
+                       mutate(site=1:nrow(.))),
+           admix.prop = purrr::map(construct.res,
+               function(x)
+                   x[["MAP"]][["admix.proportions"]] %>%
+                       magrittr::set_colnames(sprintf("pop_%d", 1:ncol(.))) %>%
+                       as_tibble()),
+           both=purrr::map2(coords, admix.prop,
+               function(x, y)
+                   bind_cols(x, y) %>%
+                       pivot_longer(cols=starts_with("pop_"),
+                                    names_to="pop",
+                                    names_prefix="pop_",
+                                    values_to="proportion"))
+           ) %>%
+    select(mdl, K, rep, both) %>%
+    unnest(both) %>%
+    mutate(group = dist(cbind(longitude, latitude)) %>%
+                       hclust() %>%
+                       cutree(h=0.8)) %>%
+    group_by(mdl, K, rep, group, pop) %>%
+    summarise(latitude=mean(latitude), longitude=mean(longitude),
+              proportion=mean(proportion), size=n()) %>%
+    ungroup() %>%
+    group_by(mdl, K, rep, group) %>%
+    nest() %>%
+    mutate(plot=purrr::map(data,
+               function(d)
+                    geom_arc_bar(aes(x0=longitude, y0=latitude, r0=0,
+                                     fill=pop,r=0.5, amount=proportion),
+                                data=d, stat="pie", inherit.aes=F, linetype="blank")))
+
+
+eu.bbox = c(left=-12, right=29, top=60, bottom=34)
+eu = ne_countries(scale = "medium", returnclass = "sf", continent="europe")
+
+ggplot(eu) +
+    geom_sf(fill="white", colour="grey") +
+    plt %>%
+       filter(mdl=="sp", K==2, rep==1) %>%
+       pull(plot) +
+    #scale_colour_brewer(palette="Set1") +
+    scale_fill_brewer(palette="Set1") +
+    coord_sf(xlim = eu.bbox[1:2], ylim = eu.bbox[c(4,3)], expand = FALSE) +
+    labs(x=NULL, y=NULL) +
+    theme(legend.position="none", panel.grid=element_blank())
+ggsave("out/Hpa_cs_v2/Hpa_cs_k2-piemap.png", height=6.3, width=7, unit="in", dpi=1200)
+
+ggplot(eu) +
+    geom_sf(fill="white", colour="grey") +
+    plt %>%
+       filter(mdl=="sp", K==3, rep==1) %>%
+       pull(plot) +
+    #scale_colour_brewer(palette="Set1") +
+    scale_fill_brewer(palette="Set1") +
+    coord_sf(xlim = eu.bbox[1:2], ylim = eu.bbox[c(4,3)], expand = FALSE) +
+    labs(x=NULL, y=NULL) +
+    theme(legend.position="none", panel.grid=element_blank())
+ggsave("out/Hpa_cs_v2/Hpa_cs_k3-piemap.png", height=6.3, width=7, unit="in", dpi=1200)
