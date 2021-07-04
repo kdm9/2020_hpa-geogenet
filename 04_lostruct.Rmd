@@ -115,4 +115,6 @@ ggplot(mds.plt, aes(x=overall_pos, y=value)) +
     scale_shape_manual(values=shapes) +
     labs(x="Genome position", y="MDS axis") +
     theme(legend.position="none", panel.grid=element_blank())
+ggsave("out/plot/04_lostruct-manhattan.svg", width=10, height=6, units="in")
+ggsave("out/plot/04_lostruct-manhattan.png", width=10, height=6, units="in")
 ```

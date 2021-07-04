@@ -26,8 +26,8 @@ outhtml := $(patsubst %.Rmd,%.html,$(rmd))
 #%.Rmd: %.sh
 #	jupytext --to Rmd '$^'
 #
-#%.md %.html: %.Rmd
-#	Rscript -e 'rmarkdown::render("$^", rmarkdown::html_document(keep_md=T), output_file="$@")'
+%.md %.html: %.Rmd
+	Rscript -e 'rmarkdown::render("$^", rmarkdown::html_document(keep_md=T), output_file="$@")'
 
 ipynb := $(patsubst %.Rmd,%.ipynb,$(rmd))
 ipynb_html := $(patsubst %.ipynb,%.html,$(nb))
