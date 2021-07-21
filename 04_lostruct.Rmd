@@ -7,6 +7,7 @@ author: Kevin Murray
 Have now separated out the conStruct notebook.
 
 ```{r setup, include=F, cache=F}
+if (!require("xfun"))              { install.packages("xfun")                                   ; require("xfun")               }
 if (!require("tidyverse"))         { install.packages("tidyverse")                              ; require("tidyverse")          }
 if (!require("foreach"))           { install.packages("foreach")                                ; require("foreach")            }
 if (!require("doParallel"))        { install.packages("doParallel")                             ; require("doParallel")         }
@@ -74,20 +75,27 @@ windows = windowlickr:::bcf_getWindows(file, windowsize=winsize, slide=winsize)
 wf = windowlickr_windowfun(file=file, windows=windows, size=winsize, samples=samp.within.eur)
 
 # Calculate pop. struct. (eigenvectors) of each window
-eigwin = eigen_windows(wf, k=npc, mc.cores=NCPUS)
+eigwin = xfun::cache_rds({
+    eigen_windows(wf, k=npc, mc.cores=NCPUS)
+}, file="04_lostruct_eigwin.rds", dir="data/cache/")
 ```
 
 
 ```{r}
 # calculate inter-window distances
-pcd = pc_dist(eigwin, npc=npc)
+
+pcd = xfun::cache_rds({
+    pc_dist(eigwin, npc=npc)
+}, file="04_lostruct_pcdist.rds", dir="data/cache/")
 
 # exclude NA windows
 na.window.idx = is.na(eigwin[,1])
 non.na.windows = windows[!na.window.idx,]
 
 # mds
-mds = cmdscale( pcd[!na.window.idx,!na.window.idx], k=5, eig=T)
+mds =  xfun::cache_rds({
+    cmdscale( pcd[!na.window.idx,!na.window.idx], k=5, eig=T)
+}, file="04_lostruct_cmdscale.rds", dir="data/cache/")
 
 # make data frame
 pts = mds$points
