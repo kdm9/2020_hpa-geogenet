@@ -21,14 +21,6 @@ if (!require("SNPRelate"))         { BiocManager::install("SNPRelate")          
 if (!require("conStruct"))         { install.packages("conStruct")                      ; require("conStruct")          }
 if (!require("constructhelpers"))  { remotes::install_github("kdm9/constructhelpers")   ; require("constructhelpers")   }
 
-library(ggspatial)
-library("ggplot2")
-library("sf")
-library("rnaturalearth")
-library("rnaturalearthdata")
-library(ggforce)
-theme_set(theme_bw())
-
 
 if (!dir.exists("out/Hpa_cs_v2/")) dir.create("out/Hpa_cs_v2/")
 
@@ -195,8 +187,7 @@ cxv %>%
 # ADMIXTURE result, and the barplots from conStruct, and a pie-chart figure but
 # overlaid on a basemap of europe.
 
-
-plt = cxv %>%
+crossval_admix_prop = cxv %>%
     filter(mdl == "sp", K %in% 2:3, rep==1) %>%
     mutate(coords = purrr::map(data.block,
                function(x) 
@@ -224,39 +215,6 @@ plt = cxv %>%
     group_by(mdl, K, rep, group, pop) %>%
     summarise(latitude=mean(latitude), longitude=mean(longitude),
               proportion=mean(proportion), size=n()) %>%
-    ungroup() %>%
-    group_by(mdl, K, rep, group) %>%
-    nest() %>%
-    mutate(plot=purrr::map(data,
-               function(d)
-                    geom_arc_bar(aes(x0=longitude, y0=latitude, r0=0,
-                                     fill=pop,r=0.5, amount=proportion),
-                                data=d, stat="pie", inherit.aes=F, linetype="blank")))
+    ungroup()
 
-
-eu.bbox = c(left=-12, right=29, top=60, bottom=34)
-eu = ne_countries(scale = "medium", returnclass = "sf", continent="europe")
-
-ggplot(eu) +
-    geom_sf(fill="white", colour="grey") +
-    plt %>%
-       filter(mdl=="sp", K==2, rep==1) %>%
-       pull(plot) +
-    #scale_colour_brewer(palette="Set1") +
-    scale_fill_brewer(palette="Set1") +
-    coord_sf(xlim = eu.bbox[1:2], ylim = eu.bbox[c(4,3)], expand = FALSE) +
-    labs(x=NULL, y=NULL) +
-    theme(legend.position="none", panel.grid=element_blank())
-ggsave("out/Hpa_cs_v2/Hpa_cs_k2-piemap.png", height=6.3, width=7, unit="in", dpi=1200)
-
-ggplot(eu) +
-    geom_sf(fill="white", colour="grey") +
-    plt %>%
-       filter(mdl=="sp", K==3, rep==1) %>%
-       pull(plot) +
-    #scale_colour_brewer(palette="Set1") +
-    scale_fill_brewer(palette="Set1") +
-    coord_sf(xlim = eu.bbox[1:2], ylim = eu.bbox[c(4,3)], expand = FALSE) +
-    labs(x=NULL, y=NULL) +
-    theme(legend.position="none", panel.grid=element_blank())
-ggsave("out/Hpa_cs_v2/Hpa_cs_k3-piemap.png", height=6.3, width=7, unit="in", dpi=1200)
+save(crossval_admix_prop, file="data/cache/02_construct_admix_prop.Rds")
