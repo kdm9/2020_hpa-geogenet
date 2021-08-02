@@ -17,6 +17,15 @@ load("data/cache/02_construct_admix_prop.Rds", verbose=T)
 # # Pie map plots
 
 plt  = crossval_admix_prop %>%
+    select(mdl, K, rep, both) %>%
+    unnest(both) %>%
+    mutate(group = dist(cbind(longitude, latitude)) %>%
+                       hclust() %>%
+                       cutree(h=0.8)) %>%
+    group_by(mdl, K, rep, group, pop) %>%
+    summarise(latitude=mean(latitude), longitude=mean(longitude),
+              proportion=mean(proportion), size=n()) %>%
+    ungroup() %>%
     group_by(mdl, K, rep, group) %>%
     nest() %>%
     mutate(plot=purrr::map(data,

@@ -207,15 +207,6 @@ crossval_admix_prop = cxv %>%
                                     names_to="pop",
                                     names_prefix="pop_",
                                     values_to="proportion"))
-           ) %>%
-    select(mdl, K, rep, both) %>%
-    unnest(both) %>%
-    mutate(group = dist(cbind(longitude, latitude)) %>%
-                       hclust() %>%
-                       cutree(h=0.8)) %>%
-    group_by(mdl, K, rep, group, pop) %>%
-    summarise(latitude=mean(latitude), longitude=mean(longitude),
-              proportion=mean(proportion), size=n()) %>%
-    ungroup()
+           )
 
 save(crossval_admix_prop, file="data/cache/02_construct_admix_prop.Rds")
