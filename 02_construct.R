@@ -43,6 +43,7 @@ geo.clust.indiv = geo.dist.indiv %>%
     cutree(h=5) # cut at 5km radius
 geo.cluster.name = sprintf("GC%02d", geo.clust.indiv)
 meta$geo.clust = geo.cluster.name
+write_tsv(meta, "data/metadata/europe-metadata-geoclust.tsv")
 
 samp.within.eur.geno.ok = readLines("data/metadata/samples_within_europe_genotype_ok.txt")
 

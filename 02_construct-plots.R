@@ -1,13 +1,20 @@
-
 install.packages(c("ggspatial", "ggplot2", "sf", "rnaturalearth",
                    "rnaturalearthdata", "ggforce"))
+
+library(tidyverse)
 library(ggspatial)
-library("ggplot2")
-library("sf")
-library("rnaturalearth")
-library("rnaturalearthdata")
+library(ggplot2)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
 library(ggforce)
+library(foreach)
 theme_set(theme_bw())
+
+meta = read_tsv("data/metadata/europe-metadata-geoclust.tsv")
+load("data/cache/02_construct_admix_prop.Rds", verbose=T)
+
+# # Pie map plots
 
 plt  = crossval_admix_prop %>%
     group_by(mdl, K, rep, group) %>%
@@ -45,3 +52,43 @@ ggplot(eu) +
     labs(x=NULL, y=NULL) +
     theme(legend.position="none", panel.grid=element_blank())
 ggsave("out/Hpa_cs_v2/Hpa_cs_k3-piemap.png", height=6.3, width=7, unit="in", dpi=1200)
+
+# # Structure bar plots
+
+k23_cs = crossval_admix_prop %>%
+    filter(K %in% 2:3, rep==1) 
+
+
+samp.within.eur.geno.ok = readLines("data/metadata/samples_within_europe_genotype_ok.txt")
+admix.indiv = readLines("data/admixture/individualOrdered.txt")
+
+k23_admix = foreach(K=2:3, rep=1:10, .combine=rbind) %do%
+{
+    admix = read.table(sprintf("data/admixture/rep%d_P/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.vcf.gz.%d.Q", rep, K), header=F) %>%
+        mutate(indiv=admix.indiv) %>%
+        tidyr::gather("pop", "admix.prop", -indiv) %>%
+        mutate(pop = as.integer(sub("^V", "" ,pop)), rep=rep, K=K)
+
+}
+
+
+admix.meta = meta %>%
+    filter(ind %in% samp.within.eur.geno.ok) %>%
+    select(-pop)
+
+k23_admix_pop = k23_admix %>% 
+    inner_join(admix.meta, by=c("indiv"="ind")) %>%
+    group_by(pop, K, rep, geo.clust) %>%
+    summarise_at(vars(admix.prop, latitude, longitude), mean) %>%
+    mutate(set=sprintf("ADMIXTURE K%d", K))
+
+k23_cs_pre = k23_cs %>%
+    select(-size, -longitude, -latitude) %>%
+    mutate(set=sprintf("conStruct K%d %s", K, c("sp"="Spatial", "nsp"="Non-spatial")[mdl]), pop=as.integer(pop)) %>%
+    rename(admix.prop=proportion)
+
+
+barplot.dat = bind_rows(k23_cs_pre, k23_admix_pop)
+
+kview(k23_cs)
+kview(barplot.dat)
