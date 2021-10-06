@@ -24,6 +24,7 @@ if (!require("constructhelpers"))  { remotes::install_github("kdm9/constructhelp
 
 if (!dir.exists("out/Hpa_cs_v2/")) dir.create("out/Hpa_cs_v2/")
 
+force.rerun = TRUE
 NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
 registerDoParallel(cores=NCPUS)
 cat(paste("Using", NCPUS, "cores\n"))
@@ -33,7 +34,9 @@ cat(paste("Using", NCPUS, "cores\n"))
 #
 # First, we need to select samples and find geographic clusters.
 
-meta = read_tsv("data/metadata/europe-metadata.tsv")
+samp.within.eur.geno.ok = readLines("data/metadata/samples_within_europe_genotype_ok.txt")
+meta = read_tsv("data/metadata/europe-metadata.tsv") %>%
+    filter(ind %in% samp.within.eur.geno.ok)
 geo.dist.indiv = meta %>%
     column_to_rownames(var = "ind") %>%
     dplyr::select(longitude, latitude) %>%
@@ -45,7 +48,6 @@ geo.cluster.name = sprintf("GC%02d", geo.clust.indiv)
 meta$geo.clust = geo.cluster.name
 write_tsv(meta, "data/metadata/europe-metadata-geoclust.tsv")
 
-samp.within.eur.geno.ok = readLines("data/metadata/samples_within_europe_genotype_ok.txt")
 
 # So at a population radius of 5km, we have `r length(geo.cluster.name)`
 # clusters.
@@ -64,6 +66,7 @@ table(table(geo.cluster.name))
 gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds", allow.duplicate=T)
 gds.sum  = snpgdsSummary(gds)
 gen = snpgdsGetGeno(gds, sample.id = samp.within.eur.geno.ok, with.id = T)
+length(samp.within.eur.geno.ok)
 
 # Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of population
 # allele frequencies. We skip columns (SNPs) with null variance. 
@@ -77,7 +80,7 @@ gen.pop = xfun::cache_rds({
         }
         tapply(gen$genotype[, i], geo.cluster.name, function(x) {mean(x, na.rm=T)/2})
     }
-}, file="02_01_genpop", dir="data/cache/",  compress="xz")
+}, file="02_01_genpop-aaz", dir="data/cache/",  compress="xz", rerun=force.rerun)
 
 
 # ## Run construct
@@ -87,6 +90,7 @@ gen.pop = xfun::cache_rds({
 # all K sequentially which makes it take K times as long as it needs to.
 
 
+str(meta)
 geo.clust.dat = meta %>%
     group_by(geo.clust, pop) %>%
     summarise(latitude = mean(latitude),
@@ -106,18 +110,18 @@ geo.clust.dist = geo.clust.latlong %>%
 
 cxv = xfun::cache_rds({
     constructhelpers::csh.x.validation(
-        prefix="out/Hpa_cs_v2/HpA_cs_v2",
+        prefix="out/Hpa_cs_v2/HpA_cs_v2-aaz",
         freqs=gen.pop,
         coords=geo.clust.latlong,
         geoDist=geo.clust.dist,
-        K=1:8,
+        K=1:6,
         train.prop=0.9,
-        n.reps=16,
+        n.reps=8,
         n.iter=20000,
         n.nodes=NCPUS,
         save.files=F,
         make.figs=T)
-}, file="02_02_cs_xval", dir="data/cache/",  compress="xz")
+}, file="02_02_cs_xval-aaz", dir="data/cache/",  compress="xz", rerun=force.rerun)
 
 
 # # Summarise construct cross validation
@@ -209,4 +213,4 @@ crossval_admix_prop = cxv %>%
                                     values_to="proportion"))
            )
 
-save(crossval_admix_prop, file="data/cache/02_construct_admix_prop.Rds")
+save(crossval_admix_prop, file="data/cache/02_construct_admix_prop-aaz.Rds")

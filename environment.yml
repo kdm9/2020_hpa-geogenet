@@ -15,6 +15,7 @@ dependencies:
   - r-tidyverse
   - r-remotes
   - r-xfun
+  - r-rstan
   - jupytext
   - jupyter
   - notebook

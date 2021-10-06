@@ -1,5 +1,5 @@
 install.packages(c("ggspatial", "ggplot2", "sf", "rnaturalearth",
-                   "rnaturalearthdata", "ggforce"))
+                   "rnaturalearthdata", "ggforce", "rgeos"))
 
 library(tidyverse)
 library(ggspatial)
@@ -12,7 +12,7 @@ library(foreach)
 theme_set(theme_bw())
 
 meta = read_tsv("data/metadata/europe-metadata-geoclust.tsv")
-load("data/cache/02_construct_admix_prop.Rds", verbose=T)
+load("data/cache/02_construct_admix_prop-aaz.Rds", verbose=T)
 
 # # Pie map plots
 
@@ -35,7 +35,7 @@ plt  = crossval_admix_prop %>%
                                 data=d, stat="pie", inherit.aes=F, linetype="blank")))
 
 
-eu.bbox = c(left=-12, right=29, top=60, bottom=34)
+eu.bbox = c(left=-12, right=55, top=60, bottom=34)
 eu = ne_countries(scale = "medium", returnclass = "sf", continent="europe")
 
 ggplot(eu) +
@@ -48,7 +48,7 @@ ggplot(eu) +
     coord_sf(xlim = eu.bbox[1:2], ylim = eu.bbox[c(4,3)], expand = FALSE) +
     labs(x=NULL, y=NULL) +
     theme(legend.position="none", panel.grid=element_blank())
-ggsave("out/Hpa_cs_v2/Hpa_cs_k2-piemap.png", height=6.3, width=7, unit="in", dpi=1200)
+ggsave("out/Hpa_cs_v2/Hpa_cs_k2-piemap-aaz.png", height=6.3, width=7, unit="in", dpi=1200)
 
 ggplot(eu) +
     geom_sf(fill="white", colour="grey") +
@@ -60,7 +60,7 @@ ggplot(eu) +
     coord_sf(xlim = eu.bbox[1:2], ylim = eu.bbox[c(4,3)], expand = FALSE) +
     labs(x=NULL, y=NULL) +
     theme(legend.position="none", panel.grid=element_blank())
-ggsave("out/Hpa_cs_v2/Hpa_cs_k3-piemap.png", height=6.3, width=7, unit="in", dpi=1200)
+ggsave("out/Hpa_cs_v2/Hpa_cs_k3-piemap-aaz.png", height=6.3, width=7, unit="in", dpi=1200)
 
 # # Structure bar plots
 
@@ -77,7 +77,6 @@ k23_admix = foreach(K=2:3, rep=1:10, .combine=rbind) %do%
         mutate(indiv=admix.indiv) %>%
         tidyr::gather("pop", "admix.prop", -indiv) %>%
         mutate(pop = as.integer(sub("^V", "" ,pop)), rep=rep, K=K)
-
 }
 
 
