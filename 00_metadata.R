@@ -43,7 +43,7 @@ summary(geo[, c("latitude", "longitude")])
 #
 # This plots samples for just the european samples on a map.
 
-eu.bbox = c(left=-18, right=32, top=62, bottom=32)
+eu.bbox = c(left=-18, right=55, top=62, bottom=32)
 basemap.terr = get_stamenmap(eu.bbox, zoom=5, maptype="terrain-background")
 eu.geo = geo %>%
     filter(latitude > eu.bbox["bottom"], latitude < eu.bbox["top"],
@@ -55,8 +55,10 @@ ggmap(basemap.terr, darken=c(0.4, "white"), legend="topleft", extent="device") +
                alpha=1, size=2) +
     labs(x="Longitude", y="Latitude") +
     scale_colour_discrete(name="Population") + 
-    theme_bw()
-ggsave("out/plot/00_samples-within-europe-map.svg")
+    theme_bw() +
+    theme(panel.grid=element_blank())
+ggsave("out/plot/00_samples-within-europe-map.svg", width=8, height=5)
+ggsave("out/plot/00_samples-within-europe-map.png", width=8, height=5)
 
 # To pass this forwards to all future analyses we save a list of samples within
 # Eurasia. We are focused on the Eurasian samples here as this is the native
