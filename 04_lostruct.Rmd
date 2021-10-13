@@ -4,7 +4,6 @@ date: 2021-02-24
 author: Kevin Murray
 ---
 
-Have now separated out the conStruct notebook.
 
 ```{r setup, include=F, cache=F}
 if (!require("xfun"))              { install.packages("xfun")                                   ; require("xfun")               }
@@ -27,7 +26,7 @@ if (file.exists("data/cache/01_hpa-geogenetics.Rda")) load(file="data/cache/01_h
 theme_set(theme_bw())
 
 NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
-#registerDoParallel(cores=NCPUS)
+registerDoParallel(cores=NCPUS)
 #cat(paste("Using", NCPUS, "cores\n"))
 ```
 
@@ -124,5 +123,40 @@ ggplot(mds.plt, aes(x=overall_pos, y=value)) +
     labs(x="Genome position", y="MDS axis") +
     theme(legend.position="none", panel.grid=element_blank())
 ggsave("out/plot/04_lostruct-manhattan.svg", width=10, height=6, units="in")
-ggsave("out/plot/04_lostruct-manhattan.png", width=10, height=6, units="in")
+ggsave("out/plot/04_lostruct-manhattan.png", width=10, height=6, units="in", dpi=600)
 ```
+
+
+
+```{r}
+asai = read_tsv("asaiEffectorBed.txt")
+
+
+asai.match = asai %>% 
+  mutate(contig_matched = sprintf("%06dF|arrow", contig - 1)) %>%
+  mutate(overall_pos = ctg.lens[contig_matched] + start)
+
+asai.atr = asai.match %>%
+  filter(grepl("ATR", asaiEffector, ignore.case = T))
+
+ggplot(mds.plt, aes(x=overall_pos, y=value)) +
+    geom_point(aes(colour=contig, shape=contig)) +
+    geom_rug(aes(x=overall_pos, y=0), sides="b", data=asai.match) +
+    facet_grid(mds.dim~., space="free_x") +
+    scale_colour_manual(values=colours) +
+    scale_shape_manual(values=shapes) +
+    labs(x="Genome position", y="MDS axis") +
+    theme(legend.position="none", panel.grid=element_blank())
+ggsave("out/plot/04_lostruct-manhattan-asai-rug.png", width=10, height=6, units="in", dpi=600)
+
+ggplot(mds.plt, aes(x=overall_pos, y=value)) +
+    geom_point(aes(colour=contig, shape=contig)) +
+    geom_rug(aes(x=overall_pos, y=0), sides="b", data=asai.atr) +
+    facet_grid(mds.dim~., space="free_x") +
+    scale_colour_manual(values=colours) +
+    scale_shape_manual(values=shapes) +
+    labs(x="Genome position", y="MDS axis") +
+    theme(legend.position="none", panel.grid=element_blank())
+ggsave("out/plot/04_lostruct-manhattan-asai-atr-rug.png", width=10, height=6, units="in", dpi=600)
+```
+

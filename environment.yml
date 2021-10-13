@@ -16,6 +16,11 @@ dependencies:
   - r-remotes
   - r-xfun
   - r-rstan
+  - r-sf
+  - r-lwgeom
+  - r-ggmap
+  - r-ggrepel
+  - r-ggforce
   - jupytext
   - jupyter
   - notebook

@@ -23,14 +23,17 @@ csxvap = crossval_admix_prop %>%
 
 # # Pie map plots
 
-plt  = csxvap %>%
+csvmap_data  = csxvap %>%
     mutate(group = dist(cbind(longitude, latitude)) %>%
                        hclust() %>%
                        cutree(h=0.8)) %>%
     group_by(mdl, K, rep, group, pop) %>%
     summarise(latitude=mean(latitude), longitude=mean(longitude),
               proportion=mean(proportion), size=n()) %>%
-    ungroup() %>%
+    ungroup()
+write_tsv(csvmap_data, 'csvmap_data.tsv')
+
+plt  = csvmap_data %>%
     group_by(mdl, K, rep, group) %>%
     nest() %>%
     mutate(plot=purrr::map(data,
@@ -54,13 +57,16 @@ ggplot(eu) +
     labs(x=NULL, y=NULL) +
     theme(legend.position="none", panel.grid=element_blank())
 ggsave("out/plot/02_Hpa_cs-aaz_k2-piemap.svg", height=6.3, width=7, unit="in", dpi=1200)
+ggsave("out/plot/02_Hpa_cs-aaz_k2-piemap.pdf", height=6.3, width=7, unit="in", dpi=1200)
 
 ggplot() +
     plt %>%
        filter(mdl=="sp", K==2, rep==1) %>%
        pull(plot) +
     coord_fixed()
+
 ggsave("out/plot/02_Hpa_cs-aaz_k2-justpies.svg", height=6.3, width=7, unit="in", dpi=1200)
+ggsave("out/plot/02_Hpa_cs-aaz_k2-justpies.pdf", height=6.3, width=7, unit="in", dpi=1200)
 
 ggplot(eu) +
     geom_sf(fill="white", colour="grey") +
@@ -73,6 +79,7 @@ ggplot(eu) +
     labs(x=NULL, y=NULL) +
     theme(legend.position="none", panel.grid=element_blank())
 ggsave("out/plot/02_Hpa_cs-aaz_k3-piemap.svg", height=6.3, width=7, unit="in", dpi=1200)
+ggsave("out/plot/02_Hpa_cs-aaz_k3-piemap.pdf", height=6.3, width=7, unit="in", dpi=1200)
 
 ggplot() +
     plt %>%
@@ -80,6 +87,7 @@ ggplot() +
        pull(plot) +
     coord_fixed()
 ggsave("out/plot/02_Hpa_cs-aaz_k3-justpies.svg", height=6.3, width=7, unit="in", dpi=1200)
+ggsave("out/plot/02_Hpa_cs-aaz_k3-justpies.pdf", height=6.3, width=7, unit="in", dpi=1200)
 
 # # Structure bar plots
 
@@ -130,3 +138,4 @@ ggplot(barplot.dat, aes(x=geo.clust, y=admix.prop)) +
     theme(legend.position="none", axis.text=element_blank(), axis.ticks=element_blank(),
         strip.text.x=element_text(angle=90))
 ggsave("out/plot/02_construct-admixture-barplots.svg", width=3, height=6)
+ggsave("out/plot/02_construct-admixture-barplots.pdf", width=3, height=6)
