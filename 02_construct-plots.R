@@ -1,4 +1,4 @@
-# # Construct-related plots for the paper
+#' # Construct-related plots for the paper
 
 #install.packages(c("ggspatial", "ggplot2", "sf", "rnaturalearth",
 #                   "rnaturalearthdata", "ggforce", "rgeos"))
@@ -21,7 +21,7 @@ csxvap = crossval_admix_prop %>%
     mutate(geo.clust = sprintf("GC%02d", site))
 
 
-# # Pie map plots
+#' # Pie map plots
 
 csvmap_data  = csxvap %>%
     mutate(group = dist(cbind(longitude, latitude)) %>%
@@ -89,7 +89,7 @@ ggplot() +
 ggsave("out/plot/02_Hpa_cs-aaz_k3-justpies.svg", height=6.3, width=7, unit="in", dpi=1200)
 ggsave("out/plot/02_Hpa_cs-aaz_k3-justpies.pdf", height=6.3, width=7, unit="in", dpi=1200)
 
-# # Structure bar plots
+#' # Structure bar plots
 
 samp.within.eur.geno.ok = readLines("data/metadata/samples_within_europe_genotype_ok.txt")
 
@@ -139,3 +139,57 @@ ggplot(barplot.dat, aes(x=geo.clust, y=admix.prop)) +
         strip.text.x=element_text(angle=90))
 ggsave("out/plot/02_construct-admixture-barplots.svg", width=3, height=6)
 ggsave("out/plot/02_construct-admixture-barplots.pdf", width=3, height=6)
+
+
+#' # Fancy piemaps
+#'
+#' This looted from https://stackoverflow.com/questions/51398344/r-pie-charts-distorted-when-adding-to-projected-map-using-ggplot
+
+
+world = map_data("world", resolution=0)
+basem = ggplot(data=world, aes(x=long, y=lat, group=group)) + 
+  geom_polygon(color = "grey", fill="white") + 
+  coord_quickmap(xlim = c(-12, 55), ylim = c(34, 60)) +
+  ylab("Latitude") + 
+  xlab("Longitude") + 
+  theme(
+    panel.background = element_rect(fill = "lightsteelblue2"),
+    panel.grid = element_blank(), 
+    legend.position = "top")
+
+basem
+
+
+pie.list = csvmap_data %>% 
+  tidyr::nest(c(pop, proportion)) %>%
+  # make a pie chart from each row, & convert to grob
+  mutate(pie.grob = purrr::map(data,
+                               function(d) ggplotGrob(ggplot(d, 
+                                                             aes(x = 1, y = proportion, fill = pop)) +
+                                                        geom_col(color = "black",
+                                                                 show.legend = FALSE) +
+                                                        coord_polar(theta = "y") +
+                                                        theme_void()))) %>%
+
+  # convert each grob to an annotation_custom layer. I've also adjusted the radius
+  # value to a reasonable size (based on my screen resolutions).
+  rowwise() %>%
+  mutate(radius = 0.8) %>%
+  mutate(subgrob = list(annotation_custom(grob = pie.grob,
+                                          xmin = longitude - radius, xmax = longitude + radius,
+                                          ymin = latitude  - radius, ymax = latitude + radius)))
+
+basem + 
+    pie.list %>%
+    filter(mdl=="sp", K==3) %>%
+    pull(subgrob)
+ggsave("out/plot/02_Hpa_cs_k3-piemap-fixed.svg", width=9, height=6)
+ggsave("out/plot/02_Hpa_cs_k3-piemap-fixed.pdf", width=9, height=6)
+
+
+basem + 
+    pie.list %>%
+    filter(mdl=="sp", K==2) %>%
+    pull(subgrob)
+ggsave("out/plot/02_Hpa_cs_k2-piemap-fixed.svg", width=9, height=6)
+ggsave("out/plot/02_Hpa_cs_k2-piemap-fixed.pdf", width=9, height=6)
