@@ -8,3 +8,4 @@ Rplots.pdf
 *.ipynb
 data/tmp
 out
+/*.spin.R*
