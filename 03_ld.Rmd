@@ -5,22 +5,6 @@ author: Kevin Murray
 ---
 
 ```{r setup}
-if (!require("boringLD"))   { remotes::install_github("kdm9/boringLD") ; require("boringLD")   }
-if (!require("tidyverse"))  { install.packages("tidyverse")            ; require("tidyverse")  }
-if (!require("foreach"))    { install.packages("foreach")              ; require("foreach")    }
-if (!require("doParallel")) { install.packages("doParallel")           ; require("doParallel") }
-if (!require("parallel"))   { install.packages("parallel")             ; require("parallel")   }
-if (!require("ggplot2"))    { install.packages("ggplot2")              ; require("ggplot2")    }
-
-if (!dir.exists("out")) dir.create("out")
-if (!dir.exists("data/cache")) dir.create("data/cache")
-if (file.exists("data/cache/01_hpa-geogenetics.Rda")) load(file="data/cache/01_hpa-geogenetics.Rda")
-if (file.exists("data/cache/03_hpa-ld.Rda")) load(file="data/cache/03_hpa-ld.Rda")
-NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
-registerDoParallel(cores=NCPUS)
-cat(paste("Using", NCPUS, "cores\n"))
-theme_set(theme_bw())
-if (!dir.exists("out/LD")) dir.create("out/LD")
 ```
 
 # Calculate LD across genome
