@@ -1,11 +1,10 @@
----
-title: Lostruct
-date: 2021-02-24
-author: Kevin Murray
----
+#' ---
+#' title: Lostruct
+#' date: 2021-02-24
+#' author: Kevin Murray
+#' ---
+#'
 
-
-```{r setup, include=F, cache=F}
 if (!require("xfun"))              { install.packages("xfun")                                   ; require("xfun")               }
 if (!require("tidyverse"))         { install.packages("tidyverse")                              ; require("tidyverse")          }
 if (!require("foreach"))           { install.packages("foreach")                                ; require("foreach")            }
@@ -27,14 +26,13 @@ theme_set(theme_bw())
 
 NCPUS = as.integer(Sys.getenv("NCPUS", parallel::detectCores(logical=F)))
 registerDoParallel(cores=NCPUS)
-#cat(paste("Using", NCPUS, "cores\n"))
-```
 
-## BCF windower
+#' ## BCF windower
+#' 
+#' So at time of writing, lostruct's vcf parsing code is borked. So, I've
+#' written a custom bit of code using windowlickr to do the snp extraction on
+#' windows.
 
-So at time of writing, lostruct's vcf parsing code is borked. So, I've written a custom bit of code using windowlickr to do the snp extraction on windows.
-
-```{r}
 windowlickr_windowfun <- function (file, windows=NULL, size=20000, samples=NULL, ...) {
     if (is.null(samples)) { samples = windowlickr:::bcf_getSamples(file) }
     if (is.null(windows)) { windows = windowlickr:::bcf_getWindows(file, windowsize=size, slide=size)}
@@ -59,11 +57,11 @@ windowlickr_windowfun <- function (file, windows=NULL, size=20000, samples=NULL,
     class(win.fn) <- c("winfun", "function")
     return(win.fn)
 }
-```
 
-## Run eigen_windows
+#' ## Run eigen_windows
+#'
+#' This is the local PCAs per genome window.
 
-```{r}
 # params: window size & input file
 winsize=200000
 file="data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.bcf"
@@ -77,10 +75,7 @@ wf = windowlickr_windowfun(file=file, windows=windows, size=winsize, samples=sam
 eigwin = xfun::cache_rds({
     eigen_windows(wf, k=npc, mc.cores=NCPUS)
 }, file="04_lostruct_eigwin.rds", dir="data/cache/")
-```
 
-
-```{r}
 # calculate inter-window distances
 
 pcd = xfun::cache_rds({
@@ -101,9 +96,7 @@ pts = mds$points
 colnames(pts) = paste0("MDS",seq_len(ncol(pts)))
 mds.dat = bind_cols(non.na.windows, as.data.frame(pts))
 str(mds.dat)
-```
 
-```{r plot.mds}
 ctgs = windowlickr:::bcf_getContigs(file)
 ctg.lens=cumsum(c(0, ctgs$lengths[-length(ctgs$lengths)]))
 names(ctg.lens) = ctgs$names
@@ -124,13 +117,8 @@ ggplot(mds.plt, aes(x=overall_pos, y=value)) +
     theme(legend.position="none", panel.grid=element_blank())
 ggsave("out/plot/04_lostruct-manhattan.svg", width=10, height=6, units="in")
 ggsave("out/plot/04_lostruct-manhattan.png", width=10, height=6, units="in", dpi=600)
-```
 
-
-
-```{r}
-asai = read_tsv("asaiEffectorBed.txt")
-
+asai = read_tsv("data/annotation/asaiEffectorBed.txt")
 
 asai.match = asai %>% 
   mutate(contig_matched = sprintf("%06dF|arrow", contig - 1)) %>%
@@ -158,5 +146,5 @@ ggplot(mds.plt, aes(x=overall_pos, y=value)) +
     labs(x="Genome position", y="MDS axis") +
     theme(legend.position="none", panel.grid=element_blank())
 ggsave("out/plot/04_lostruct-manhattan-asai-atr-rug.png", width=10, height=6, units="in", dpi=600)
-```
+
 
