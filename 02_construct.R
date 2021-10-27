@@ -1,25 +1,25 @@
-# ---
-# title: Construct on Hpa
-# date: 2021-01-02
-# author: Kevin Murray
-# ---
+#' ---
+#' title: Construct on Hpa
+#' author: Kevin Murray
+#' ---
+#'
+#' Construct models population structure as a combination of discrete and
+#' continuous structure.
 
-# Construct models population structure as a combination of discrete and
-# continuous structure.
-
-if (!require("tidyverse"))         { install.packages("tidyverse")                      ; require("tidyverse")          }
-if (!require("foreach"))           { install.packages("foreach")                        ; require("foreach")            }
-if (!require("doParallel"))        { install.packages("doParallel")                     ; require("doParallel")         }
-if (!require("parallel"))          { install.packages("parallel")                       ; require("parallel")           }
-if (!require("ggplot2"))           { install.packages("ggplot2")                        ; require("ggplot2")            }
-if (!require("ggrepel"))           { install.packages("ggrepel")                        ; require("ggrepel")            }
-if (!require("ggmap"))             { install.packages("ggmap")                          ; require("ggmap")              }
-if (!require("RColorBrewer"))      { install.packages("RColorBrewer")                   ; require("RColorBrewer")       }
-if (!require("fossil"))            { install.packages("fossil")                         ; require("fossil")             }
-if (!require("vegan"))             { install.packages("vegan")                          ; require("vegan")              }
-if (!require("SNPRelate"))         { BiocManager::install("SNPRelate")                  ; require("SNPRelate")          }
-if (!require("conStruct"))         { install.packages("conStruct")                      ; require("conStruct")          }
-if (!require("constructhelpers"))  { remotes::install_github("kdm9/constructhelpers")   ; require("constructhelpers")   }
+library(tidyverse)
+library(foreach)
+library(doParallel)
+library(parallel)
+library(ggplot2)
+library(ggmap)
+library(fossil)
+library(vegan)
+library(gdm)
+library(ecodist)
+library(SNPRelate)
+library(RColorBrewer)
+library(conStruct)
+library(constructhelpers)
 
 
 if (!dir.exists("out/Hpa_cs_v2/")) dir.create("out/Hpa_cs_v2/")
@@ -30,9 +30,9 @@ registerDoParallel(cores=NCPUS)
 cat(paste("Using", NCPUS, "cores\n"))
 
 
-# ## Geographic clustering
-#
-# First, we need to select samples and find geographic clusters.
+#' ## Geographic clustering
+#'
+#' First, we need to select samples and find geographic clusters.
 
 samp.within.eur.geno.ok = readLines("data/metadata/samples_within_europe_genotype_ok.txt")
 meta = read_tsv("data/metadata/europe-metadata.tsv") %>%
@@ -49,27 +49,27 @@ meta$geo.clust = geo.cluster.name
 write_tsv(meta, "data/metadata/europe-metadata-geoclust.tsv")
 
 
-# So at a population radius of 5km, we have `r length(geo.cluster.name)`
-# clusters.
-#
-# Here are the cluster sizes (y clusters of size x): 
+#' So at a population radius of 5km, we have `r length(geo.cluster.name)`
+#' clusters.
+#'
+#' Here are the cluster sizes (y clusters of size x): 
 
 table(table(geo.cluster.name))
 
-# ## Basic genetics
-#
-# Here we need to extract the SNP data, and reduce it to allele frequencies at
-# each geographic cluster, and remove snps with null variance.
-
-# First,  get the indivs by snps matrix (122x500k)
+#' ## Basic genetics
+#'
+#' Here we need to extract the SNP data, and reduce it to allele frequencies at
+#' each geographic cluster, and remove snps with null variance.
+#'
+#' First,  get the indivs by snps matrix (122x500k)
 
 gds = snpgdsOpen("data/HaR.filtered_snps_final.PASS.bi.hardFiltered.indFiltered.noMit.reheader.gds", allow.duplicate=T)
 gds.sum  = snpgdsSummary(gds)
 gen = snpgdsGetGeno(gds, sample.id = samp.within.eur.geno.ok, with.id = T)
 length(samp.within.eur.geno.ok)
 
-# Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of population
-# allele frequencies. We skip columns (SNPs) with null variance. 
+#' Now, we reduce the 122x500k matrix of SNPs to a 68x500k matrix of population
+#' allele frequencies. We skip columns (SNPs) with null variance. 
 
 gen.pop = xfun::cache_rds({
     N.SNP = ncol(gen$genotype)
@@ -83,11 +83,11 @@ gen.pop = xfun::cache_rds({
 }, file="02_01_genpop-aaz", dir="data/cache/",  compress="xz", rerun=force.rerun)
 
 
-# ## Run construct
-#
-# Here we do some data prep, then run all the construct runs needed to do cross
-# validation (NB: we don't use construct's own cross validation here as it runs
-# all K sequentially which makes it take K times as long as it needs to.
+#' ## Run construct
+#'
+#' Here we do some data prep, then run all the construct runs needed to do cross
+#' validation (NB: we don't use construct's own cross validation here as it runs
+#' all K sequentially which makes it take K times as long as it needs to.
 
 
 str(meta)
@@ -104,9 +104,9 @@ geo.clust.dist = geo.clust.latlong %>%
     as.matrix()
 
 
-# So to run construct we shell out to the cluster, as it takes ages. So, we save
-# the inputs to an Rds and then load the results again here for plotting and
-# interpretation.
+#' So to run construct we shell out to the cluster, as it takes ages. So, we save
+#' the inputs to an Rds and then load the results again here for plotting and
+#' interpretation.
 
 cxv = xfun::cache_rds({
     constructhelpers::csh.x.validation(
@@ -124,9 +124,9 @@ cxv = xfun::cache_rds({
 }, file="02_02_cs_xval-aaz", dir="data/cache/",  compress="xz", rerun=force.rerun)
 
 
-# # Summarise construct cross validation
-
-# Here we plot the log likelihoods for each run. NB that in theory, the 
+#' # Summarise construct cross validation
+#'
+#' Here we plot the log likelihoods for each run. NB that in theory, the 
 
 cxv.std.fit = cxv %>%
     select(-construct.res, -mdl.fit) %>%
@@ -169,9 +169,9 @@ ggplot(plot.dat, aes(x=layer, y=layer.contrib)) +
 ggsave("out/Hpa_cs_v2/Hpa_cs_xval_lc.pdf", width=8,height=5)
 
 
-# ## K=2 and K=3 Piecharts
-#
-# Here we use conStruct's `make.all.the.plots` to generate plots for each run for K in 1:4.
+#' ## K=2 and K=3 Piecharts
+#'
+#' Here we use conStruct's `make.all.the.plots` to generate plots for each run for K in 1:4.
 
 
 if (!dir.exists("out/Hpa_cs_v2/matp/")) dir.create("out/Hpa_cs_v2/matp/", recursive=T)
@@ -186,11 +186,11 @@ cxv %>%
     invisible()
 
 
-# # Paper plots
-#
-# We need two plots for the paper: a structure-style barplot with both Gautam's
-# ADMIXTURE result, and the barplots from conStruct, and a pie-chart figure but
-# overlaid on a basemap of europe.
+#' # Paper plots
+#'
+#' We need two plots for the paper: a structure-style barplot with both Gautam's
+#' ADMIXTURE result, and the barplots from conStruct, and a pie-chart figure but
+#' overlaid on a basemap of europe.
 
 crossval_admix_prop = cxv %>%
     filter(mdl == "sp", K %in% 2:3, rep==1) %>%

@@ -1,7 +1,5 @@
 #' # Construct-related plots for the paper
 
-#install.packages(c("ggspatial", "ggplot2", "sf", "rnaturalearth",
-#                   "rnaturalearthdata", "ggforce", "rgeos"))
 library(tidyverse)
 library(ggspatial)
 library(ggplot2)
@@ -31,7 +29,7 @@ csvmap_data  = csxvap %>%
     summarise(latitude=mean(latitude), longitude=mean(longitude),
               proportion=mean(proportion), size=n()) %>%
     ungroup()
-write_tsv(csvmap_data, 'csvmap_data.tsv')
+write_tsv(csvmap_data, 'out/Hpa_cs_v2/csvmap_data.tsv')
 
 plt  = csvmap_data %>%
     group_by(mdl, K, rep, group) %>%

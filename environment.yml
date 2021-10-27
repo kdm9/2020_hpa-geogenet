@@ -6,21 +6,31 @@ channels:
 dependencies:
   - git-annex
   - htslib
+  - jupyter
+  - jupytext
   - libcurl
+  - notebook
   - pynvim
   - r
-  - r-irkernel
   - r-biocmanager
-  - r-svglite
-  - r-tidyverse
-  - r-remotes
-  - r-xfun
-  - r-rstan
-  - r-sf
-  - r-lwgeom
+  - r-ecodist
+  - r-foreach
+  - r-fossil
+  - r-ggforce
   - r-ggmap
   - r-ggrepel
-  - r-ggforce
-  - jupytext
-  - jupyter
-  - notebook
+  - r-irkernel
+  - r-lwgeom
+  - r-raster
+  - r-remotes
+  - r-rnaturalearth
+  - r-rnaturalearthdata
+  - r-rstan
+  - r-sf
+  - r-svglite
+  - r-tidyverse
+  - r-vegan
+  - r-xfun
+# install.packages(c("ggspatial", "GGally", "gdm", "RColorBrewer", "conStruct"))
+# BiocManager::install("SNPRelate")
+# remotes::install_github("kdm9/constructhelpers")

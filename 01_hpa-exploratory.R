@@ -3,17 +3,17 @@
 #' author: K.D. Murray
 #' ---
 
-if (!require("tidyverse"))    { install.packages("tidyverse")     ; require("tidyverse")    }
-if (!require("foreach"))      { install.packages("foreach")       ; require("foreach")      }
-if (!require("doParallel"))   { install.packages("doParallel")    ; require("doParallel")   }
-if (!require("parallel"))     { install.packages("parallel")      ; require("parallel")     }
-if (!require("ggplot2"))      { install.packages("ggplot2")       ; require("ggplot2")      }
-if (!require("ggmap"))        { install.packages("ggmap")         ; require("ggmap")        }
-if (!require("fossil"))       { install.packages("fossil")        ; require("fossil")       }
-if (!require("vegan"))        { install.packages("vegan")         ; require("vegan")        }
-if (!require("gdm"))          { install.packages("gdm")           ; require("gdm")          }
-if (!require("ecodist"))      { install.packages("ecodist")       ; require("ecodist")      }
-if (!require("SNPRelate"))    { BiocManager::install("SNPRelate") ; require("SNPRelate")    }
+library(tidyverse)
+library(foreach)
+library(doParallel)
+library(parallel)
+library(ggplot2)
+library(ggmap)
+library(fossil)
+library(vegan)
+library(gdm)
+library(ecodist)
+library(SNPRelate)
 if (!dir.exists("out/plot")) dir.create("out/plot", recursive=T)
 
 
