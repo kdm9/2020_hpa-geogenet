@@ -16,8 +16,10 @@ load("data/cache/02_construct_admix_prop-aaz.Rds", verbose=T)
 csxvap = crossval_admix_prop %>%
     select(mdl, K, rep, both) %>%
     unnest(both) %>%
+    mutate(pop = as.factor((K+1) - as.numeric(pop))) %>%
     mutate(geo.clust = sprintf("GC%02d", site))
 
+gautam.pal.k3 = c("#f0a3ff", "#0075dc", "#993f00")
 
 #' # Pie map plots
 
@@ -56,6 +58,7 @@ ggplot(eu) +
     theme(legend.position="none", panel.grid=element_blank())
 ggsave("out/plot/02_Hpa_cs-aaz_k2-piemap.svg", height=6.3, width=7, unit="in", dpi=1200)
 ggsave("out/plot/02_Hpa_cs-aaz_k2-piemap.pdf", height=6.3, width=7, unit="in", dpi=1200)
+ggsave("out/plot/02_Hpa_cs-aaz_k2-piemap.png", height=6.3, width=7, unit="in", dpi=1200)
 
 ggplot() +
     plt %>%
@@ -128,8 +131,8 @@ barplot.dat = bind_rows(k23_cs_pre, k23_admix_pop) %>%
 ggplot(barplot.dat, aes(x=geo.clust, y=admix.prop)) +
     geom_bar(aes(colour=pop, fill=pop), stat="identity", position="stack") +
     facet_grid(.~set) +
-    scale_colour_brewer(palette="Paired") +
-    scale_fill_brewer(palette="Paired") +
+    scale_colour_manual(values=gautam.pal.k3) +
+    scale_fill_manual(values=gautam.pal.k3) +
     coord_flip() +
     theme_classic() +
     labs(x=NULL, y=NULL) +
@@ -137,6 +140,7 @@ ggplot(barplot.dat, aes(x=geo.clust, y=admix.prop)) +
         strip.text.x=element_text(angle=90))
 ggsave("out/plot/02_construct-admixture-barplots.svg", width=3, height=6)
 ggsave("out/plot/02_construct-admixture-barplots.pdf", width=3, height=6)
+ggsave("out/plot/02_construct-admixture-barplots.png", width=3, height=6, dpi=1200)
 
 
 #' # Fancy piemaps
@@ -162,17 +166,14 @@ pie.list = csvmap_data %>%
   tidyr::nest(c(pop, proportion)) %>%
   # make a pie chart from each row, & convert to grob
   mutate(pie.grob = purrr::map(data,
-                               function(d) ggplotGrob(ggplot(d, 
-                                                             aes(x = 1, y = proportion, fill = pop)) +
-                                                        geom_col(color = "black",
-                                                                 show.legend = FALSE) +
-                                                        coord_polar(theta = "y") +
-                                                        theme_void()))) %>%
-
-  # convert each grob to an annotation_custom layer. I've also adjusted the radius
-  # value to a reasonable size (based on my screen resolutions).
+                               function(d) ggplotGrob(ggplot(d, aes(x = 1, y = proportion, fill = pop)) +
+                                                      geom_col(show.legend = FALSE) +
+                                                      scale_fill_manual(values=gautam.pal.k3) +
+                                                      coord_polar(theta = "y") +
+                                                      theme_void()))) %>%
+  # convert each grob to an annotation_custom layer.
   rowwise() %>%
-  mutate(radius = 0.8) %>%
+  mutate(radius = 0.9) %>%
   mutate(subgrob = list(annotation_custom(grob = pie.grob,
                                           xmin = longitude - radius, xmax = longitude + radius,
                                           ymin = latitude  - radius, ymax = latitude + radius)))
@@ -181,13 +182,15 @@ basem +
     pie.list %>%
     filter(mdl=="sp", K==3) %>%
     pull(subgrob)
-ggsave("out/plot/02_Hpa_cs_k3-piemap-fixed.svg", width=9, height=6)
-ggsave("out/plot/02_Hpa_cs_k3-piemap-fixed.pdf", width=9, height=6)
+ggsave("out/plot/02_Hpa_cs_k3-piemap-fixed.svg", width=9, height=6, unit="in", dpi=1200)
+ggsave("out/plot/02_Hpa_cs_k3-piemap-fixed.pdf", width=9, height=6, unit="in", dpi=1200)
+ggsave("out/plot/02_Hpa_cs_k3-piemap-fixed.png", width=9, height=6, unit="in", dpi=1200)
 
 
 basem + 
     pie.list %>%
     filter(mdl=="sp", K==2) %>%
     pull(subgrob)
-ggsave("out/plot/02_Hpa_cs_k2-piemap-fixed.svg", width=9, height=6)
-ggsave("out/plot/02_Hpa_cs_k2-piemap-fixed.pdf", width=9, height=6)
+ggsave("out/plot/02_Hpa_cs_k2-piemap-fixed.svg", width=9, height=6, unit="in", dpi=1200)
+ggsave("out/plot/02_Hpa_cs_k2-piemap-fixed.pdf", width=9, height=6, unit="in", dpi=1200)
+ggsave("out/plot/02_Hpa_cs_k2-piemap-fixed.png", width=9, height=6, unit="in", dpi=1200)
